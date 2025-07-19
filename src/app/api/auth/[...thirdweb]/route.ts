@@ -1,6 +1,7 @@
 'use server';
 
-import { InAppWallet, createThirdwebAuth } from 'thirdweb/auth';
+import { createThirdwebAuth } from 'thirdweb/auth';
+import { inAppWallet } from 'thirdweb/wallets/in-app';
 import { privateKeyToAccount } from 'thirdweb/wallets';
 import { client } from '@/lib/thirdweb-client';
 
@@ -11,10 +12,10 @@ if (!privateKey) {
 }
 
 export const { GET, POST } = createThirdwebAuth({
-  wallet: InAppWallet({
+  wallet: inAppWallet({
     client,
     auth: {
-      options: ['email'],
+      options: ['email', 'google', 'apple'],
     },
   }),
   authOptions: {

@@ -47,16 +47,16 @@ export default function Login() {
     e.preventDefault();
     setError(null);
 
-    connect(async () => {
+    await connect(async () => {
       try {
-        await wallet.connect({
+        const connectedWallet = await wallet.connect({
           client,
           strategy: 'email',
           email,
           verificationCode,
         });
         router.push('/dashboard');
-        return wallet;
+        return connectedWallet;
       } catch (err: any) {
         console.error('Connection failed:', err);
         setError(err.message || 'Invalid verification code. Please try again.');
@@ -70,13 +70,12 @@ export default function Login() {
   const handleSocialLogin = (strategy: 'google' | 'apple') => {
     connect(async () => {
         try {
-            await wallet.connect({
+            const connectedWallet = await wallet.connect({
                 client,
                 strategy,
-                redirectUrl: window.location.href, // Or a specific URL
             });
             router.push('/dashboard');
-            return wallet;
+            return connectedWallet;
         } catch (err: any) {
             console.error(`${strategy} login failed:`, err);
             setError(err.message || `Failed to login with ${strategy}.`);
