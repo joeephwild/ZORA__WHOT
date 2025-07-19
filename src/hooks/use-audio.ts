@@ -33,9 +33,13 @@ export const useAudio = (url: string, options: UseAudioOptions = {}) => {
   }, [url, loop, volume]);
 
   const play = useCallback(() => {
-    if (audioRef.current) {
+    if (audioRef.current && audioRef.current.paused) {
         audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(err => console.error("Audio play failed:", err));
+        audioRef.current.play().catch(err => {
+            if (err.name !== 'AbortError') {
+                 console.error("Audio play failed:", err)
+            }
+        });
         setIsPlaying(true);
     }
   }, []);

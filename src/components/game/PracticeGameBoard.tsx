@@ -5,7 +5,7 @@ import type { GameState, Card, Shape } from '@/lib/whot';
 import { WhotCard } from "./WhotCard";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Button } from "../ui/button";
-import { Swords, Bot, Loader2, Crown, Info, Home, User } from "lucide-react";
+import { Swords, Bot, Loader2, Crown, Info, Home } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -46,10 +46,8 @@ const TurnIndicator = ({ message }: { message: string }) => (
     </motion.div>
 );
 
-// A placeholder for the current user's ID
-const MY_PLAYER_ID_PLACEHOLDER = "player1";
 
-export default function GameBoard({ gameId }: { gameId: string }) {
+export default function PracticeGameBoard() {
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -61,74 +59,48 @@ export default function GameBoard({ gameId }: { gameId: string }) {
     const [lastPlayerId, setLastPlayerId] = useState<string | null>(null);
     const [invalidMoveCardId, setInvalidMoveCardId] = useState<string | null>(null);
     const [playedCard, setPlayedCard] = useState<Card | null>(null);
-    const [opponentPlayedCard, setOpponentPlayedCard] = useState<Card | null>(null);
+    const [aiPlayedCard, setAiPlayedCard] = useState<Card | null>(null);
     const [audioEvent, setAudioEvent] = useState<AudioEvent>(null);
 
     const { toast } = useToast();
     const router = useRouter();
     
-    // In multiplayer, the player ID would come from an auth context.
-    const myPlayerId = MY_PLAYER_ID_PLACEHOLDER; 
+    const myPlayerId = 'player1';
     const playerTurn = gameState?.currentPlayerId === myPlayerId;
     const topOfDiscardPile = gameState ? gameState.discardPile[gameState.discardPile.length - 1] : null;
 
-    // Effect for fetching a multiplayer game
+    // Effect for starting a practice game
     useEffect(() => {
-        const fetchGame = async () => {
-            if (!gameId) {
-                setError("No game ID provided.");
-                setLoading(false);
-                return;
-            }
-
+        const initializeGame = async () => {
             setLoading(true);
             setError(null);
-            
+            setAudioEvent('shuffle');
             try {
-                 const res = await fetch(`/api/game?gameId=${gameId}`);
-                 if (!res.ok) {
-                    if (res.status === 404) {
-                        throw new Error('Game not found. It may have expired or never existed.');
-                    }
-                    throw new Error('Could not load game.');
-                 }
-                 const gameData = await res.json();
+                const res = await fetch('/api/game', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'newGame',
+                        payload: { gameMode: 'practice' }
+                    })
+                });
+                if (!res.ok) throw new Error('Failed to start practice game');
+                const gameData = await res.json();
                 setGameState(gameData);
                 setLastPlayerId(gameData.currentPlayerId);
             } catch (err: any) {
                 setError(err.message);
                 toast({
                     title: "Error",
-                    description: err.message || "Could not load the game. Please try again.",
+                    description: err.message || "Could not start the game. Please try again.",
                     variant: "destructive"
                 });
             } finally {
                 setLoading(false);
             }
         };
-        fetchGame();
-    }, [gameId, toast]);
-    
-    // Polling for opponent's moves
-    useEffect(() => {
-        if (!playerTurn && gameState && !gameState.winner && !isSubmitting) {
-            const interval = setInterval(async () => {
-                 try {
-                     const res = await fetch(`/api/game?gameId=${gameState.gameId}`);
-                     if (!res.ok) throw new Error("Failed to sync game state.");
-                     const updatedState: GameState = await res.json();
-                     if (updatedState.currentPlayerId !== gameState.currentPlayerId || updatedState.discardPile.length !== gameState.discardPile.length) {
-                        setGameState(updatedState);
-                     }
-                 } catch (err) {
-                    // console.error("Polling error:", err);
-                 }
-            }, 3000); // Poll every 3 seconds
-
-            return () => clearInterval(interval);
-        }
-    }, [playerTurn, gameState, isSubmitting, toast]);
-
+        initializeGame();
+    }, [toast]);
 
     // Effect for showing turn change message
     useEffect(() => {
@@ -144,6 +116,55 @@ export default function GameBoard({ gameId }: { gameId: string }) {
         }
     }, [gameState, lastPlayerId, myPlayerId]);
 
+    // Effect to trigger AI turn
+    const handleAiTurn = useCallback(async (gameId: string) => {
+        setIsSubmitting(true);
+        const originalState = gameState;
+
+        try {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Pause for realism
+            const res = await fetch('/api/ai-turn', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ gameId })
+            });
+
+            if (!res.ok) {
+                 const errorData = await res.json();
+                 throw new Error(errorData.error || "AI failed to make a move.");
+            }
+            
+            const updatedState: GameState = await res.json();
+
+            const aiCard = originalState?.aiHand.find(c => !updatedState.aiHand.some(uc => uc.id === c.id));
+            
+            if (aiCard) {
+                setAiPlayedCard(aiCard);
+                setAudioEvent('play');
+                await new Promise(resolve => setTimeout(resolve, 500)); 
+            } else {
+                setAudioEvent('draw');
+                 await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            
+            setGameState(updatedState);
+            
+        } catch (err: any) {
+            toast({ title: "AI Error", description: err.message, variant: "destructive" });
+        } finally {
+            setIsSubmitting(false);
+            setAiPlayedCard(null);
+        }
+
+    }, [gameState, toast]);
+
+    useEffect(() => {
+        if (gameState?.currentPlayerId === 'ai' && !isSubmitting && !gameState.winner) {
+            handleAiTurn(gameState.gameId);
+        }
+    }, [gameState, isSubmitting, handleAiTurn]);
+
+
     const submitPlayerMove = async (action: 'playCard' | 'drawCard', payload: any) => {
         if (!gameState || gameState.winner || isSubmitting) return;
         
@@ -157,7 +178,7 @@ export default function GameBoard({ gameId }: { gameId: string }) {
                 setAudioEvent('draw');
             }
 
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise(resolve => setTimeout(resolve, 300)); // Animation time
 
             const res = await fetch('/api/game', {
                 method: 'POST',
@@ -214,28 +235,32 @@ export default function GameBoard({ gameId }: { gameId: string }) {
         await submitPlayerMove('drawCard', { gameId: gameState!.gameId, playerId: myPlayerId });
     };
     
+    // Memos for displaying hands
     const myHand = useMemo(() => {
         if (!gameState) return [];
-        return gameState.players.find(p => p.id === myPlayerId)?.hand || [];
-    }, [gameState, myPlayerId]);
+        return gameState.playerHand;
+    }, [gameState]);
 
     const opponent = useMemo(() => {
         if(!gameState) return null;
-        const opponentPlayer = gameState.players.find(p => p.id !== myPlayerId);
-        if (!opponentPlayer) return null;
-        
-        return {
-            ...opponentPlayer,
-            name: "Opponent", // Replace with real name later
-            isAi: false
+        let hand = gameState.aiHand;
+        if(aiPlayedCard) {
+            hand = hand.filter(c => c.id !== aiPlayedCard.id);
         }
-    }, [gameState, myPlayerId])
+        return {
+            id: 'ai',
+            name: 'AI Player',
+            hand,
+            isAi: true
+        }
+    }, [gameState, aiPlayedCard])
+
 
     if (loading) {
         return (
             <div className="min-h-screen w-full flex flex-col items-center justify-center p-4">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                <p className="mt-4 text-muted-foreground">Joining multiplayer game...</p>
+                <p className="mt-4 text-muted-foreground">Setting up your practice game...</p>
                 <GameSounds event="shuffle" onEnd={() => setAudioEvent(null)} />
             </div>
         )
@@ -321,7 +346,7 @@ export default function GameBoard({ gameId }: { gameId: string }) {
             <div className="w-full flex flex-col items-center">
                 <div className="flex items-center gap-3 bg-card/80 backdrop-blur-sm p-2 rounded-lg shadow-md mb-3">
                     <Avatar>
-                        <AvatarFallback><User /></AvatarFallback>
+                        <AvatarFallback><Bot /></AvatarFallback>
                     </Avatar>
                     <div>
                         <h3 className="font-bold">{opponent.name} ({opponent.hand.length} cards)</h3>
@@ -381,15 +406,15 @@ export default function GameBoard({ gameId }: { gameId: string }) {
                                 <WhotCard card={playedCard} />
                             </motion.div>
                         )}
-                        {opponentPlayedCard && (
+                        {aiPlayedCard && (
                              <motion.div
-                                layoutId={`card-${opponentPlayedCard.id}`}
+                                layoutId={`card-${aiPlayedCard.id}`}
                                 className="absolute inset-0"
                                 initial={{ opacity: 0, scale: 1.5, rotate: -15 }}
                                 animate={{ opacity: 1, scale: 1, rotate: 0 }}
                                 transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                             >
-                                <WhotCard card={opponentPlayedCard} />
+                                <WhotCard card={aiPlayedCard} />
                             </motion.div>
                         )}
                         </AnimatePresence>
