@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface UseAudioOptions {
   volume?: number;
@@ -10,66 +10,50 @@ interface UseAudioOptions {
 export const useAudio = (url: string, options: UseAudioOptions = {}) => {
   const { volume = 1, loop = false } = options;
   
-  // We use a memoized audio element to prevent re-creation on re-renders.
-  // This state holds the Audio object, but only on the client-side.
-  const [audio, setAudio] = useState<HTMLAudioElement | undefined>(undefined);
-  
-  const [playing, setPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
-  // Effect to create the Audio object only on the client
+  // Effect to create and configure the Audio object only on the client
   useEffect(() => {
-    const audioObj = new Audio(url);
-    setAudio(audioObj);
+    const audio = new Audio(url);
+    audioRef.current = audio;
+
+    const handleEnded = () => setIsPlaying(false);
     
-    // Cleanup function to pause and nullify on unmount
+    audio.addEventListener('ended', handleEnded);
+    audio.loop = loop;
+    audio.volume = volume;
+
+    // Cleanup function
     return () => {
-        audioObj.pause();
+      audio.pause();
+      audio.removeEventListener('ended', handleEnded);
+      audio.src = ''; // Release memory
     };
-  }, [url]);
-
-  useEffect(() => {
-    if (audio) {
-      audio.volume = volume;
-      audio.loop = loop;
-    }
-  }, [audio, volume, loop]);
-
-  useEffect(() => {
-    if (audio) {
-      playing ? audio.play().catch(err => console.error("Audio play failed:", err)) : audio.pause();
-    }
-  }, [audio, playing]);
-
-  useEffect(() => {
-    const handleEnded = () => setPlaying(false);
-    
-    if (audio) {
-      audio.addEventListener('ended', handleEnded);
-      return () => {
-        audio.removeEventListener('ended', handleEnded);
-      };
-    }
-  }, [audio]);
+  }, [url, loop, volume]);
 
   const play = useCallback(() => {
-    if (audio) {
-        if(audio.HAVE_NOTHING) { // A quick check to see if audio is loaded
-           audio.currentTime = 0;
-           audio.play().catch(err => console.error("Audio play failed on retry:", err));
-           setPlaying(true);
-        }
+    if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(err => console.error("Audio play failed:", err));
+        setIsPlaying(true);
     }
-  }, [audio]);
+  }, []);
 
   const pause = useCallback(() => {
-    if(audio) {
-      setPlaying(false);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      setIsPlaying(false);
     }
-  }, [audio]);
-  
-  const toggle = useCallback(() => {
-    setPlaying(p => !p);
-  }, [])
+  }, []);
 
-  return { playing, toggle, play, pause };
+  const toggle = useCallback(() => {
+    if (isPlaying) {
+      pause();
+    } else {
+      play();
+    }
+  }, [isPlaying, play, pause]);
+
+  return { playing: isPlaying, toggle, play, pause };
 };

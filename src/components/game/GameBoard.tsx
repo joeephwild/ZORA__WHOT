@@ -29,6 +29,8 @@ import GameInstructionsModal from './GameInstructionsModal';
 import { AnimatePresence, motion } from 'framer-motion';
 import GameSounds from './GameSounds';
 
+type AudioEvent = 'play' | 'draw' | 'shuffle' | 'win' | 'lose' | 'invalid' | null;
+
 const TurnIndicator = ({ message }: { message: string }) => (
     <motion.div
         key={message}
@@ -57,7 +59,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
     const [lastPlayerId, setLastPlayerId] = useState<string | null>(null);
     const [invalidMoveCardId, setInvalidMoveCardId] = useState<number | null>(null);
     const [playedCard, setPlayedCard] = useState<Card | null>(null);
-    const [audioEvent, setAudioEvent] = useState<'play' | 'draw' | 'shuffle' | 'win' | 'lose' | null>(null);
+    const [audioEvent, setAudioEvent] = useState<AudioEvent>(null);
 
     const { toast } = useToast();
     const router = useRouter();
@@ -138,18 +140,18 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
 
             const updatedState: GameState = await res.json();
             
-            // Check if the AI also played after our move
             const lastMove = updatedState.lastMoveMessage || "";
-            if(action === 'playCard' && lastMove.includes('AI played')) {
+            if(action === 'playCard' && (lastMove.includes('AI played') || lastMove.includes("AI's turn"))) {
               setAudioEvent('play');
-            } else if (action === 'drawCard' && lastMove.includes('AI draws')) {
+            } else if (action === 'playCard' && lastMove.includes('AI draws')) {
               setAudioEvent('draw');
             }
-
+            
             setGameState(updatedState);
 
         } catch (err: any) {
             toast({ title: "Invalid Move", description: err.message, variant: "destructive" });
+            setAudioEvent('invalid');
             if (action === 'playCard') {
                 setInvalidMoveCardId(payload.card.id);
                 setTimeout(() => setInvalidMoveCardId(null), 500);
