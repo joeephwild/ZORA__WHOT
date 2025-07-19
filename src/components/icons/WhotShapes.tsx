@@ -6,7 +6,7 @@ const shapeColors: Record<Shape, string> = {
     circle: "text-blue-500",
     triangle: "text-red-500",
     cross: "text-green-600",
-    square: "text-gray-800",
+    square: "text-gray-800 dark:text-gray-400",
     star: "text-yellow-500",
     whot: ""
 };
