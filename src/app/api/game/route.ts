@@ -9,7 +9,8 @@ export async function POST(req: NextRequest) {
 
         switch (action) {
             case 'newGame': {
-                const newGame = gameService.createGame(payload.playerId, payload.gameMode);
+                const playerIds = payload.gameMode === 'practice' ? ['player1', 'ai'] : [payload.playerId];
+                const newGame = gameService.createGame(playerIds, payload.gameMode);
                 return NextResponse.json(newGame);
             }
             case 'playCard': {

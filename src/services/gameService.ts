@@ -104,7 +104,6 @@ export function createGame(playerIds: string[], gameMode: GameState['gameMode'])
         currentPlayerIndex: 0,
         currentPlayerId: playerIds[0],
         winner: null,
-        requestedShape: null,
         lastMoveMessage: `Game started. It's ${playerIds[0]}'s turn!`
     };
 
