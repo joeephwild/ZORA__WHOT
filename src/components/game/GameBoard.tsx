@@ -129,7 +129,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
 
     if (loading) {
         return (
-            <div className="bg-background min-h-screen w-full flex flex-col items-center justify-center p-4">
+            <div className="min-h-screen w-full flex flex-col items-center justify-center p-4">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
                 <p className="mt-4 text-muted-foreground">Setting up your game...</p>
             </div>
@@ -138,7 +138,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
 
     if (error || !gameState) {
         return (
-            <div className="bg-background min-h-screen w-full flex flex-col items-center justify-center p-4">
+            <div className="min-h-screen w-full flex flex-col items-center justify-center p-4">
                 <p className="text-destructive-foreground bg-destructive p-4 rounded-md">{error || 'Could not load game state.'}</p>
                  <Button onClick={() => router.push('/dashboard')} className="mt-4">Back to Dashboard</Button>
             </div>
@@ -189,7 +189,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
     </Dialog>
 
 
-    <div className="bg-background min-h-screen w-full flex flex-col items-center justify-center p-2 sm:p-4 relative overflow-hidden">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center p-2 sm:p-4 relative overflow-hidden">
         {/* Top bar with actions */}
         <div className="absolute top-4 left-4 z-20 flex gap-2">
             <Button variant="outline" size="icon" onClick={() => router.push('/dashboard')}>
@@ -204,9 +204,8 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
 
 
         {/* Background elements */}
-        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-gray-900 via-gray-900 to-black"></div>
         <div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-primary/20 rounded-full filter blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-accent/20 rounded-full filter blur-3xl animate-pulse animation-delay-400"></div>
+        <div className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-accent/20 rounded-full filter blur-3xl animate-pulse [animation-delay:400ms]"></div>
 
         <div className="relative w-full max-w-7xl h-[95vh] flex flex-col justify-between">
             {/* Opponent Area */}

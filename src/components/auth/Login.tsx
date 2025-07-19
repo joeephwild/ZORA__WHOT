@@ -86,7 +86,7 @@ export default function Login() {
   }
 
   return (
-    <Card className="w-full max-w-md shadow-2xl">
+    <Card className="w-full max-w-md shadow-2xl bg-card/80 backdrop-blur-sm">
       <CardHeader className="text-center">
         <h1 className="text-4xl font-headline font-bold text-primary">FAAJI</h1>
         <CardDescription>The Ultimate Whot! Experience</CardDescription>
@@ -148,7 +148,7 @@ export default function Login() {
         <div className="relative my-6">
           <Separator />
           <div className="absolute inset-0 flex items-center">
-            <span className="bg-card px-2 text-sm text-muted-foreground mx-auto">OR</span>
+            <span className="bg-card/80 px-2 text-sm text-muted-foreground mx-auto">OR</span>
           </div>
         </div>
         <div className="space-y-3">

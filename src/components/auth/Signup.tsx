@@ -66,7 +66,7 @@ export default function Signup() {
     };
 
     return (
-        <Card className="w-full max-w-md shadow-2xl">
+        <Card className="w-full max-w-md shadow-2xl bg-card/80 backdrop-blur-sm">
             <CardHeader className="text-center">
                 <h1 className="text-4xl font-headline font-bold text-primary">Create Account</h1>
                 <CardDescription>Enter your email to get started.</CardDescription>

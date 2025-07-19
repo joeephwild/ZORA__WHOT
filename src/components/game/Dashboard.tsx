@@ -27,7 +27,11 @@ export default function Dashboard() {
   return (
     <>
     <GameInstructionsModal isOpen={showInstructions} onOpenChange={setShowInstructions} />
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
+    <div className="min-h-screen flex flex-col relative overflow-hidden">
+      {/* Background elements */}
+      <div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-primary/20 rounded-full filter blur-3xl animate-pulse"></div>
+      <div className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-accent/20 rounded-full filter blur-3xl animate-pulse [animation-delay:400ms]"></div>
+      
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
@@ -50,14 +54,14 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="flex-1 container mx-auto p-4 sm:p-6 lg:p-8">
+      <main className="flex-1 container mx-auto p-4 sm:p-6 lg:p-8 relative z-10">
         <div className="text-center mb-12">
             <h2 className="text-4xl font-bold font-headline tracking-tight">Welcome Back!</h2>
             <p className="text-muted-foreground mt-2 text-lg">Ready to challenge the Whot! world?</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <Card className="hover:shadow-xl hover:-translate-y-1 transition-transform duration-300">
+          <Card className="hover:shadow-xl hover:-translate-y-1 transition-transform duration-300 bg-card/80 backdrop-blur-sm">
             <CardHeader className="items-center text-center">
               <div className="p-4 bg-secondary rounded-full mb-4">
                 <Bot className="w-10 h-10 text-primary" />
@@ -70,7 +74,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-accent hover:shadow-2xl hover:-translate-y-1 transition-transform duration-300">
+          <Card className="border-2 border-accent hover:shadow-2xl hover:-translate-y-1 transition-transform duration-300 bg-card/80 backdrop-blur-sm">
             <CardHeader className="items-center text-center">
               <div className="p-4 bg-secondary rounded-full mb-4">
                  <Gem className="w-10 h-10 text-accent" />
@@ -86,7 +90,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-xl hover:-translate-y-1 transition-transform duration-300">
+          <Card className="hover:shadow-xl hover:-translate-y-1 transition-transform duration-300 bg-card/80 backdrop-blur-sm">
             <CardHeader className="items-center text-center">
               <div className="p-4 bg-secondary rounded-full mb-4">
                 <Shield className="w-10 h-10 text-primary" />
