@@ -6,10 +6,5 @@
     "src/app/api/**/*.ts": {
       "maxDuration": 30
     }
-  },
-  "env": {
-    "NEXT_PUBLIC_THIRDWEB_CLIENT_ID": "@next_public_thirdweb_client_id",
-    "THIRDWEB_AUTH_PRIVATE_KEY": "@thirdweb_auth_private_key",
-    "GEMINI_API_KEY": "@gemini_api_key"
   }
 }
