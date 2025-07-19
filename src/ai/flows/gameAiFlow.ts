@@ -89,6 +89,7 @@ const gameAiFlow = ai.defineFlow(
                 shapeCounts[card.shape] = (shapeCounts[card.shape] || 0) + 1;
             }
         }
+        // Find the most common shape, default to 'circle' if hand is empty or only has whot cards
         const bestShape = Object.keys(shapeCounts).reduce((a, b) => shapeCounts[a] > shapeCounts[b] ? a : b, 'circle');
         output.requestedShape = bestShape as Shape;
         output.reasoning += ` (Fallback: Chose ${bestShape} as it's the most common in my hand).`

@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import type { GameState, Card, Shape } from '@/lib/whot';
 import { WhotCard } from "./WhotCard";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import { Swords, Bot, Loader2, Crown, ShieldQuestion } from "lucide-react";
+import { Swords, Bot, Loader2, Crown } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -23,7 +23,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog"
 import { useRouter } from 'next/navigation';
 import { ShapeIcon } from '../icons/WhotShapes';
@@ -35,6 +34,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
     const [error, setError] = useState<string | null>(null);
     const [isChoosingShape, setIsChoosingShape] = useState(false);
     const [cardToPlay, setCardToPlay] = useState<Card | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
     const router = useRouter();
 
@@ -44,6 +44,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
     useEffect(() => {
         const startNewGame = async () => {
             setLoading(true);
+            setError(null);
             try {
                 const res = await fetch('/api/game', {
                     method: 'POST',
@@ -71,7 +72,8 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
     }, [gameMode, toast]);
 
     const submitMove = async (action: 'playCard' | 'drawCard', payload: any) => {
-        if (!gameState || gameState.winner) return;
+        if (!gameState || gameState.winner || isSubmitting) return;
+        setIsSubmitting(true);
         
         try {
             const res = await fetch('/api/game', {
@@ -90,11 +92,13 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
 
         } catch (err: any) {
             toast({ title: "Invalid Move", description: err.message, variant: "destructive" });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     const handleCardPlay = async (card: Card) => {
-        if (!playerTurn) return;
+        if (!playerTurn || isSubmitting) return;
 
         if (card.shape === 'whot') {
             setCardToPlay(card);
@@ -105,7 +109,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
     };
 
     const handleShapeSelection = async (shape: Shape) => {
-        if (!cardToPlay) return;
+        if (!cardToPlay || isSubmitting) return;
         setIsChoosingShape(false);
         await submitMove('playCard', { 
             gameId: gameState!.gameId, 
@@ -117,7 +121,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
     }
     
     const handleDrawCard = async () => {
-        if (!playerTurn) return;
+        if (!playerTurn || isSubmitting) return;
         await submitMove('drawCard', { gameId: gameState!.gameId, playerId: 'player1' });
     };
 
@@ -202,7 +206,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
                         </p>
                     </div>
                      {gameState.currentPlayerId === 'ai' 
-                        ? <Badge variant="default" className="bg-accent text-accent-foreground">AI'S TURN</Badge>
+                        ? <Badge variant="default" className="bg-destructive animate-pulse">AI'S TURN</Badge>
                         : <Badge variant="outline">OPPONENT</Badge>
                      }
                 </div>
@@ -219,11 +223,11 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center gap-4 sm:gap-8">
                 <div className="flex flex-col items-center gap-2">
                     <div className="w-24 sm:w-28 transform transition-transform duration-300 hover:scale-105 hover:shadow-lg">
-                         <button onClick={handleDrawCard} disabled={!playerTurn} className="w-full disabled:cursor-not-allowed">
+                         <button onClick={handleDrawCard} disabled={!playerTurn || isSubmitting} className="w-full disabled:cursor-not-allowed">
                             <WhotCard card={{id: 99, shape: 'whot', number: 20}} isFaceDown />
                          </button>
                     </div>
-                     <Button variant="outline" size="sm" onClick={handleDrawCard} disabled={!playerTurn}>Draw Card</Button>
+                     <Button variant="outline" size="sm" onClick={handleDrawCard} disabled={!playerTurn || isSubmitting}>Draw Card</Button>
                      <p className="text-xs font-semibold text-muted-foreground">{gameState.drawPile.length} left</p>
                 </div>
                 <div className="flex flex-col items-center justify-center text-center">
@@ -247,14 +251,13 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
             <div className="w-full flex flex-col items-center">
                 <div className="flex justify-center items-start h-40">
                     {gameState.playerHand.map((card) => (
-                        <button key={card.id} onClick={() => handleCardPlay(card)} disabled={!playerTurn} className="w-20 sm:w-24 -mx-4 sm:-mx-6 transform transition-transform duration-300 hover:-translate-y-4 hover:z-10 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:-translate-y-0">
+                        <button key={card.id} onClick={() => handleCardPlay(card)} disabled={!playerTurn || isSubmitting} className="w-20 sm:w-24 -mx-4 sm:-mx-6 transform transition-transform duration-300 hover:-translate-y-4 hover:z-10 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:-translate-y-0">
                             <WhotCard card={card} />
                         </button>
                     ))}
                 </div>
                  <div className="flex items-center gap-3 bg-card/80 backdrop-blur-sm p-2 rounded-lg shadow-md mt-3">
                     <Avatar>
-                        <AvatarImage src="https://placehold.co/40x40.png" alt="User" data-ai-hint="user avatar" />
                         <AvatarFallback>U</AvatarFallback>
                     </Avatar>
                     <div>
@@ -264,7 +267,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
                         </p>
                     </div>
                      {playerTurn
-                        ? <Badge variant="default" className="bg-accent text-accent-foreground">YOUR TURN</Badge>
+                        ? <Badge variant="default" className="bg-accent animate-pulse">YOUR TURN</Badge>
                         : <Badge variant="secondary">WAITING</Badge>
                      }
                 </div>
