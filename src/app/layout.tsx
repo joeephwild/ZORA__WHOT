@@ -2,6 +2,7 @@ import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { ThirdwebProvider } from '@/components/auth/ThirdwebProvider';
+import { MotionProvider } from '@/components/motion/MotionProvider';
 
 export const metadata: Metadata = {
   title: 'FAAJI - The Ultimate Whot! Experience',
@@ -22,10 +23,14 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased bg-gradient-to-br from-gray-900 via-gray-900 to-black text-foreground">
         <ThirdwebProvider>
+          <MotionProvider>
             {children}
+          </MotionProvider>
         </ThirdwebProvider>
         <Toaster />
       </body>
     </html>
   );
 }
+
+    
