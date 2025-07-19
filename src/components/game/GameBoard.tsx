@@ -95,9 +95,9 @@ export default function GameBoard({ gameId }: { gameId: string }) {
                      const res = await fetch(`/api/game?gameId=${gameId}`);
                      if (!res.ok) {
                         if (res.status === 404) {
-                            throw new Error('Game not found');
+                            throw new Error('Game not found. It may have expired or never existed.');
                         }
-                        throw new Error('Could not load game');
+                        throw new Error('Could not load game.');
                      }
                      gameData = await res.json();
                 }
