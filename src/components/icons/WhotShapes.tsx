@@ -50,7 +50,7 @@ export const ShapeIcon = ({ shape, className, small = false, ...props }: { shape
         case 'circle':
             return <Circle className={baseClass} {...componentProps} />;
         case 'triangle':
-            return <Triangle className={base-class} {...componentProps} />;
+            return <Triangle className={baseClass} {...componentProps} />;
         case 'cross':
             return <Cross className={baseClass} {...componentProps} />;
         case 'square':
