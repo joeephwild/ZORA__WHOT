@@ -204,9 +204,9 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
 
 
         {/* Background elements */}
-        <div className="absolute top-0 left-0 w-full h-full bg-primary/5"></div>
-        <div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-accent/10 rounded-full filter blur-3xl"></div>
-        <div className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-primary/10 rounded-full filter blur-3xl"></div>
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-gray-900 via-gray-900 to-black"></div>
+        <div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-primary/20 rounded-full filter blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-accent/20 rounded-full filter blur-3xl animate-pulse animation-delay-400"></div>
 
         <div className="relative w-full max-w-7xl h-[95vh] flex flex-col justify-between">
             {/* Opponent Area */}
