@@ -253,6 +253,7 @@ export default function GameBoard({ gameId }: { gameId: string }) {
     // Memos for displaying hands
     const myHand = useMemo(() => {
         if (!gameState) return [];
+        // Use `playerHand` for practice mode, otherwise find the correct player
         if (gameState.gameMode === 'practice') return gameState.playerHand;
         return gameState?.players.find(p => p.id === myPlayerId)?.hand || [];
     }, [gameState, myPlayerId]);
@@ -260,8 +261,9 @@ export default function GameBoard({ gameId }: { gameId: string }) {
     const opponent = useMemo(() => {
         if(!gameState) return null;
         if (gameState.gameMode === 'practice') {
-             let hand = gameState.aiHand;
-             if(aiPlayedCard) {
+            // Use `aiHand` for practice mode
+            let hand = gameState.aiHand;
+            if(aiPlayedCard) {
                 hand = hand.filter(c => c.id !== aiPlayedCard.id);
             }
             return {
@@ -298,7 +300,7 @@ export default function GameBoard({ gameId }: { gameId: string }) {
         return (
             <div className="min-h-screen w-full flex flex-col items-center justify-center p-4 bg-gray-900/50">
                 <p className="text-white bg-red-500/80 p-4 rounded-md mb-4">{error || 'Could not load game state.'}</p>
-                 <Button onClick={() => router.push('/dashboard')} className="mt-4 bg-green-500 hover:bg-green-600 text-white">Back to Dashboard</Button>
+                 <Button onClick={() => router.push('/dashboard')} className="mt-4 bg-primary hover:bg-primary/90 text-white">Back to Dashboard</Button>
             </div>
         )
     }

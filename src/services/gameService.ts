@@ -221,9 +221,11 @@ export function playCard(gameId: string, playerId: string, card: Card, requested
         switchPlayer(game);
     }
     
-    // For backward compatibility
-    game.playerHand = game.players.find(p => p.id === 'player1')?.hand || [];
-    game.aiHand = game.players.find(p => p.id === 'ai')?.hand || [];
+    // For backward compatibility, keep legacy hands in sync
+    const player1 = game.players.find(p => p.id === 'player1');
+    const aiPlayer = game.players.find(p => p.id === 'ai');
+    if (player1) game.playerHand = player1.hand;
+    if (aiPlayer) game.aiHand = aiPlayer.hand;
 
 
     return game;
@@ -259,8 +261,10 @@ export function drawCard(gameId: string, playerId: string): GameState {
     switchPlayer(game);
     
     // For practice mode backward compatibility
-    game.playerHand = game.players.find(p => p.id === 'player1')?.hand || [];
-    game.aiHand = game.players.find(p => p.id === 'ai')?.hand || [];
+    const player1 = game.players.find(p => p.id === 'player1');
+    const aiPlayer = game.players.find(p => p.id === 'ai');
+    if (player1) game.playerHand = player1.hand;
+    if (aiPlayer) game.aiHand = aiPlayer.hand;
 
     return game;
 }
