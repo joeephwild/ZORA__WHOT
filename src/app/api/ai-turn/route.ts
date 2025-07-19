@@ -21,7 +21,7 @@ async function handleAiTurn(gameId: string): Promise<GameState> {
         validMoves: gameState.aiHand.filter(card => 
             gameService.isValidMove(card, gameState!.discardPile[gameState!.discardPile.length - 1], gameState!.requestedShape)
         ),
-        requestedShape: gameState.requestedShape,
+        requestedShape: gameState.requestedShape || null,
     });
     
     let updatedGameState;

@@ -11,7 +11,7 @@ import type { Card, Shape } from '@/lib/whot';
 
 // Zod schema for individual cards
 const CardSchema = z.object({
-    id: z.number(),
+    id: z.string(),
     shape: z.enum(['circle', 'triangle', 'cross', 'square', 'star', 'whot']),
     number: z.number(),
 });
