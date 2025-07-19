@@ -3,13 +3,16 @@
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Bot, Shield, Gem } from 'lucide-react';
+import { Bot, Shield, Gem, BookOpen } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import GameInstructionsModal from './GameInstructionsModal';
 
 export default function Dashboard() {
   const router = useRouter();
+  const [showInstructions, setShowInstructions] = useState(false);
 
   const startNewGame = async (gameMode: 'practice' | 'staked' | 'free') => {
     // In a real app, you'd get the player ID from the logged-in user session
@@ -22,12 +25,18 @@ export default function Dashboard() {
   };
 
   return (
+    <>
+    <GameInstructionsModal isOpen={showInstructions} onOpenChange={setShowInstructions} />
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
                 <h1 className="text-2xl font-bold text-primary font-headline">FAAJI</h1>
                 <div className="flex items-center gap-4">
+                    <Button variant="outline" size="sm" onClick={() => setShowInstructions(true)}>
+                        <BookOpen className="w-4 h-4 mr-2" />
+                        How to Play
+                    </Button>
                     <div className="flex items-center gap-2">
                         <Gem className="w-5 h-5 text-blue-500" />
                         <span className="font-bold">1,200 ZORA</span>
@@ -92,5 +101,6 @@ export default function Dashboard() {
         </div>
       </main>
     </div>
+    </>
   );
 }

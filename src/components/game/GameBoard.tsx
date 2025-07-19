@@ -6,7 +6,7 @@ import { WhotCard } from "./WhotCard";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import { Swords, Bot, Loader2, Crown } from "lucide-react";
+import { Swords, Bot, Loader2, Crown, Info, Home } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog"
 import { useRouter } from 'next/navigation';
 import { ShapeIcon } from '../icons/WhotShapes';
+import GameInstructionsModal from './GameInstructionsModal';
 
 
 export default function GameBoard({ gameMode }: { gameMode: string }) {
@@ -33,6 +34,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isChoosingShape, setIsChoosingShape] = useState(false);
+    const [showInstructions, setShowInstructions] = useState(false);
     const [cardToPlay, setCardToPlay] = useState<Card | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
@@ -145,6 +147,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
 
   return (
     <>
+    <GameInstructionsModal isOpen={showInstructions} onOpenChange={setShowInstructions} />
     <AlertDialog open={!!gameState.winner}>
         <AlertDialogContent>
             <AlertDialogHeader>
@@ -187,6 +190,19 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
 
 
     <div className="bg-background min-h-screen w-full flex flex-col items-center justify-center p-2 sm:p-4 relative overflow-hidden">
+        {/* Top bar with actions */}
+        <div className="absolute top-4 left-4 z-20 flex gap-2">
+            <Button variant="outline" size="icon" onClick={() => router.push('/dashboard')}>
+                <Home className="w-4 h-4" />
+                <span className="sr-only">Dashboard</span>
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => setShowInstructions(true)}>
+                <Info className="w-4 h-4" />
+                <span className="sr-only">Game Rules</span>
+            </Button>
+        </div>
+
+
         {/* Background elements */}
         <div className="absolute top-0 left-0 w-full h-full bg-primary/5"></div>
         <div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-accent/10 rounded-full filter blur-3xl"></div>
