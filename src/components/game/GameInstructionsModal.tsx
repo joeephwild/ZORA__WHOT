@@ -1,6 +1,8 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { WhotCard } from './WhotCard';
+import type { Card } from '@/lib/whot';
 
 interface GameInstructionsModalProps {
   isOpen: boolean;
@@ -22,37 +24,43 @@ const rules = [
     },
 ];
 
-const specialCards = [
+const specialCards: { card: Card, title: string, description: string }[] = [
     { 
-        card: "1 (Hold On)", 
+        card: { id: 'instr-1', shape: 'circle', number: 1 },
+        title: "1 (Hold On)", 
         description: "The player who plays this card gets to play again immediately." 
     },
     { 
-        card: "2 (Pick Two)", 
+        card: { id: 'instr-2', shape: 'triangle', number: 2 },
+        title: "2 (Pick Two)", 
         description: "The next player must pick two cards from the draw pile." 
     },
     { 
-        card: "5 (Pick Three)", 
+        card: { id: 'instr-5', shape: 'cross', number: 5 },
+        title: "5 (Pick Three)", 
         description: "The next player must pick three cards from the draw pile." 
     },
     { 
-        card: "8 (Suspension)", 
+        card: { id: 'instr-8', shape: 'square', number: 8 },
+        title: "8 (Suspension)", 
         description: "The next player misses their turn (they are 'suspended')." 
     },
     { 
-        card: "14 (General Market)", 
+        card: { id: 'instr-14', shape: 'star', number: 14 },
+        title: "14 (General Market)", 
         description: "Every other player must draw one card from the draw pile." 
     },
     { 
-        card: "20 (WHOT!)", 
-        description: "This is a wild card. The player who plays it can request any shape (Circle, Triangle, Cross, Square, or Star). The next player must then play a card of the requested shape, or another WHOT! card. The player who plays a WHOT! card also gets to play again." 
+        card: { id: 'instr-20', shape: 'whot', number: 20 },
+        title: "20 (WHOT!)", 
+        description: "This is a wild card. The player who plays it can request any shape. The next player must then play a card of the requested shape, or another WHOT! card. The player who plays a WHOT! card also gets to play again." 
     },
 ]
 
 export default function GameInstructionsModal({ isOpen, onOpenChange }: GameInstructionsModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-headline text-center">How to Play WHOT!</DialogTitle>
           <DialogDescription className="text-center">
@@ -60,9 +68,9 @@ export default function GameInstructionsModal({ isOpen, onOpenChange }: GameInst
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-[60vh] p-4 border rounded-md">
-            <div className="space-y-6">
+            <div className="space-y-8">
                 <div>
-                    <h3 className="font-bold text-lg mb-2">Basic Rules</h3>
+                    <h3 className="font-bold text-lg mb-2 text-primary">Basic Rules</h3>
                     <ul className="space-y-3 list-disc list-inside text-muted-foreground">
                         {rules.map(rule => (
                            <li key={rule.title}><strong>{rule.title}:</strong> {rule.description}</li>
@@ -71,12 +79,17 @@ export default function GameInstructionsModal({ isOpen, onOpenChange }: GameInst
                 </div>
 
                 <div>
-                    <h3 className="font-bold text-lg mb-2">Special Cards</h3>
-                    <div className="space-y-4">
-                        {specialCards.map(card => (
-                            <div key={card.card}>
-                                <Badge variant="secondary" className="text-base mb-1">{card.card}</Badge>
-                                <p className="text-muted-foreground ml-2">{card.description}</p>
+                    <h3 className="font-bold text-lg mb-4 text-primary">Special Cards</h3>
+                    <div className="space-y-6">
+                        {specialCards.map(special => (
+                            <div key={special.title} className="flex items-start gap-4">
+                               <div className="w-24 flex-shrink-0">
+                                    <WhotCard card={special.card} />
+                               </div>
+                               <div className="flex-grow">
+                                    <h4 className="font-bold text-base">{special.title}</h4>
+                                    <p className="text-muted-foreground text-sm">{special.description}</p>
+                               </div>
                             </div>
                         ))}
                     </div>
