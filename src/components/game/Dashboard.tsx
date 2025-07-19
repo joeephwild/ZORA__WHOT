@@ -3,11 +3,24 @@
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Bot, Users, Shield, Gem } from 'lucide-react';
+import { Bot, Shield, Gem } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
+import { useRouter } from 'next/navigation';
 
 export default function Dashboard() {
+  const router = useRouter();
+
+  const startNewGame = async (gameMode: 'practice' | 'staked' | 'free') => {
+    // In a real app, you'd get the player ID from the logged-in user session
+    const playerId = 'player1'; 
+    
+    // We don't need to call the API here to start a game, 
+    // the GameBoard component will handle that.
+    // We just navigate to the correct URL.
+    router.push(`/play/${gameMode}`);
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
@@ -44,9 +57,7 @@ export default function Dashboard() {
               <CardDescription>Hone your skills against our AI.</CardDescription>
             </CardHeader>
             <CardContent className="text-center">
-              <Link href="/play/practice" passHref>
-                <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold">Play vs. AI</Button>
-              </Link>
+              <Button onClick={() => startNewGame('practice')} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold">Play vs. AI</Button>
             </CardContent>
           </Card>
 
@@ -62,9 +73,7 @@ export default function Dashboard() {
                 <div className='mb-4'>
                     <Badge variant="outline" className="border-accent text-accent font-bold">Buy-in: 100 ZORA</Badge>
                 </div>
-                <Link href="/play/staked" passHref>
-                    <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold">Join Match</Button>
-                </Link>
+                <Button onClick={() => startNewGame('staked')} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold">Join Match</Button>
             </CardContent>
           </Card>
 
@@ -77,9 +86,7 @@ export default function Dashboard() {
               <CardDescription>Casual 1v1 with your starter cards.</CardDescription>
             </CardHeader>
             <CardContent className="text-center">
-              <Link href="/play/free" passHref>
-                <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold">Find Opponent</Button>
-              </Link>
+              <Button onClick={() => startNewGame('free')} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold">Find Opponent</Button>
             </CardContent>
           </Card>
         </div>
