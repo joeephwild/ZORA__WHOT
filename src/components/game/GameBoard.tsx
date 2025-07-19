@@ -27,6 +27,7 @@ import { useRouter } from 'next/navigation';
 import { ShapeIcon } from '../icons/WhotShapes';
 import GameInstructionsModal from './GameInstructionsModal';
 import { AnimatePresence, motion } from 'framer-motion';
+import GameSounds from './GameSounds';
 
 const TurnIndicator = ({ message }: { message: string }) => (
     <motion.div
@@ -35,9 +36,9 @@ const TurnIndicator = ({ message }: { message: string }) => (
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -50, scale: 0.5, transition: { duration: 0.3 } }}
         transition={{ type: "spring", stiffness: 260, damping: 20 }}
-        className="absolute inset-0 flex items-center justify-center z-30"
+        className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none"
     >
-        <div className="bg-black/70 backdrop-blur-sm text-white font-bold text-2xl sm:text-4xl px-8 py-4 rounded-xl shadow-lg">
+        <div className="bg-black/70 backdrop-blur-sm text-white font-bold text-3xl sm:text-5xl px-10 py-5 rounded-xl shadow-lg border-2 border-white/20">
             {message}
         </div>
     </motion.div>
@@ -56,6 +57,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
     const [lastPlayerId, setLastPlayerId] = useState<string | null>(null);
     const [invalidMoveCardId, setInvalidMoveCardId] = useState<number | null>(null);
     const [playedCard, setPlayedCard] = useState<Card | null>(null);
+    const [audioEvent, setAudioEvent] = useState<'play' | 'draw' | 'shuffle' | null>(null);
 
     const { toast } = useToast();
     const router = useRouter();
@@ -67,6 +69,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
         const startNewGame = async () => {
             setLoading(true);
             setError(null);
+            setAudioEvent('shuffle');
             try {
                 const res = await fetch('/api/game', {
                     method: 'POST',
@@ -109,7 +112,10 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
         
         setIsSubmitting(true);
         if (action === 'playCard') {
+            setAudioEvent('play');
             setPlayedCard(payload.card);
+        } else {
+            setAudioEvent('draw');
         }
         
         try {
@@ -127,6 +133,12 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
             }
 
             const updatedState: GameState = await res.json();
+            
+            // Check if the AI also played
+            if(updatedState.lastMoveMessage?.includes('AI played') || updatedState.lastMoveMessage?.includes('AI draws')) {
+              setAudioEvent('play');
+            }
+
             setGameState(updatedState);
 
         } catch (err: any) {
@@ -182,6 +194,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
             <div className="min-h-screen w-full flex flex-col items-center justify-center p-4">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
                 <p className="mt-4 text-muted-foreground">Setting up your game...</p>
+                <GameSounds event="shuffle" onEnd={() => setAudioEvent(null)} />
             </div>
         )
     }
@@ -197,6 +210,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
 
   return (
     <>
+    <GameSounds event={audioEvent} onEnd={() => setAudioEvent(null)} />
     <GameInstructionsModal isOpen={showInstructions} onOpenChange={setShowInstructions} />
     <AlertDialog open={!!gameState.winner}>
         <AlertDialogContent>
@@ -361,5 +375,3 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
     </>
   );
 }
-
-    

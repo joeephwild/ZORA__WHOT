@@ -22,10 +22,10 @@ async function handleAiTurn(gameId: string) {
     
     let updatedGameState;
     if (aiResponse.cardToPlay) {
-        console.log('AI plays:', aiResponse.cardToPlay, 'Reasoning:', aiResponse.reasoning);
+        // console.log('AI plays:', aiResponse.cardToPlay, 'Reasoning:', aiResponse.reasoning);
         updatedGameState = gameService.playCard(gameId, 'ai', aiResponse.cardToPlay, aiResponse.requestedShape);
     } else {
-        console.log('AI draws card. Reasoning:', aiResponse.reasoning);
+        // console.log('AI draws card. Reasoning:', aiResponse.reasoning);
         updatedGameState = gameService.drawCard(gameId, 'ai');
     }
 
@@ -33,7 +33,7 @@ async function handleAiTurn(gameId: string) {
     if (updatedGameState && updatedGameState.currentPlayerId === 'ai' && !updatedGameState.winner) {
         // Recursive call to handle consecutive AI turns.
         // Add a small delay to make the AI's consecutive plays visible to the user.
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
         return await handleAiTurn(gameId); 
     }
     
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
                 // If it's the AI's turn after the player's move, let the AI play
                 if (gameState.currentPlayerId === 'ai' && !gameState.winner) {
                     // Add a small delay to make the game feel more natural
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                     const finalState = await handleAiTurn(gameId);
                     return NextResponse.json(finalState);
                 }
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
                  // If it's the AI's turn after the player draws, let the AI play
                 if (gameState.currentPlayerId === 'ai' && !gameState.winner) {
                      // Add a small delay
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                     const finalState = await handleAiTurn(gameId);
                     return NextResponse.json(finalState);
                 }
