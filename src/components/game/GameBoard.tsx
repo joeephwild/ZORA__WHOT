@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -297,9 +298,9 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
                         </p>
                     </div>
                 </div>
-                <div className="flex justify-center items-end h-28">
+                <div className="flex justify-center items-end h-32">
                     {gameState.aiHand.map((_, index) => (
-                        <div key={index} className="w-16 -mx-3">
+                        <div key={index} className="w-20 -mx-5">
                              <WhotCard card={{ id: 999 + index, shape: 'whot', number: 20 }} isFaceDown />
                         </div>
                     ))}
@@ -309,7 +310,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
             {/* Center Piles */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center gap-4 sm:gap-8">
                 <div className="flex flex-col items-center gap-2">
-                    <div className="w-24 sm:w-28 transform transition-transform duration-300 hover:scale-105 hover:shadow-lg">
+                    <div className="w-28 sm:w-36 transform transition-transform duration-300 hover:scale-105 hover:shadow-lg">
                          <button onClick={handleDrawCard} disabled={!playerTurn || isSubmitting} className="w-full disabled:cursor-not-allowed">
                             <WhotCard card={{id: 99, shape: 'whot', number: 20}} isFaceDown />
                          </button>
@@ -327,7 +328,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
                     <Swords className="w-8 h-8 text-muted-foreground/50" />
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                    <div className="w-24 sm:w-28 transform-gpu transition-transform duration-500 relative">
+                    <div className="w-28 sm:w-36 transform-gpu transition-transform duration-500 relative">
                         {topOfDiscardPile && <WhotCard card={topOfDiscardPile} />}
                         <AnimatePresence>
                         {playedCard && (
@@ -350,7 +351,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
             
             {/* Player Area */}
             <div className="w-full flex flex-col items-center">
-                <div className="flex justify-center items-start h-40">
+                <div className="flex justify-center items-start h-48">
                     <AnimatePresence>
                     {playerHandToDisplay.map((card) => (
                         <motion.button
@@ -358,9 +359,10 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
                             key={card.id} 
                             onClick={() => handleCardPlay(card)} 
                             disabled={!playerTurn || isSubmitting} 
-                            className="w-20 sm:w-24 -mx-4 sm:-mx-6 transform transition-transform duration-300 hover:-translate-y-4 hover:z-10 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:-translate-y-0"
+                            className="w-24 sm:w-32 -mx-6 sm:-mx-8 disabled:cursor-not-allowed disabled:opacity-70"
+                            whileHover={{ y: -16, zIndex: 20, scale: 1.05 }}
                             animate={invalidMoveCardId === card.id ? { x: [0, -10, 10, -10, 10, 0] } : {}}
-                            transition={{ duration: 0.5 }}
+                            transition={{ duration: 0.5, type: 'spring' }}
                         >
                             <WhotCard card={card} />
                         </motion.button>
