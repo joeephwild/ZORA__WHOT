@@ -135,7 +135,7 @@ export default function GameBoard({ gameId }: { gameId: string }) {
         if (gameState && gameState.currentPlayerId !== lastPlayerId && !gameState.winner) {
             const message = gameState.currentPlayerId === myPlayerId ? "Your Turn!" : "Opponent's Turn";
             setTurnMessage(message);
-            const timer = setTimeout(() => setTurnMessage(null), 1500);
+            const timer = setTimeout(() => setTurnMessage(null), 1200);
             setLastPlayerId(gameState.currentPlayerId);
             return () => clearTimeout(timer);
         }
@@ -435,3 +435,5 @@ export default function GameBoard({ gameId }: { gameId: string }) {
     </>
   );
 }
+
+    

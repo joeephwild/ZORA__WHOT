@@ -105,9 +105,9 @@ export default function PracticeGameBoard() {
     // Effect for showing turn change message
     useEffect(() => {
         if (gameState && gameState.currentPlayerId !== lastPlayerId && !gameState.winner) {
-            const message = gameState.currentPlayerId === myPlayerId ? "Your Turn!" : "Opponent's Turn";
+            const message = gameState.currentPlayerId === myPlayerId ? "Your Turn!" : "AI's Turn";
             setTurnMessage(message);
-            const timer = setTimeout(() => setTurnMessage(null), 1500);
+            const timer = setTimeout(() => setTurnMessage(null), 1200);
             setLastPlayerId(gameState.currentPlayerId);
             return () => clearTimeout(timer);
         }
@@ -460,3 +460,5 @@ export default function PracticeGameBoard() {
     </>
   );
 }
+
+    
