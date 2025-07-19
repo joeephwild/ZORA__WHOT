@@ -93,7 +93,12 @@ export default function GameBoard({ gameId }: { gameId: string }) {
                     gameData = await res.json();
                 } else {
                      const res = await fetch(`/api/game?gameId=${gameId}`);
-                     if (!res.ok) throw new Error('Game not found');
+                     if (!res.ok) {
+                        if (res.status === 404) {
+                            throw new Error('Game not found');
+                        }
+                        throw new Error('Could not load game');
+                     }
                      gameData = await res.json();
                 }
                 setGameState(gameData);
@@ -247,27 +252,33 @@ export default function GameBoard({ gameId }: { gameId: string }) {
     
     // Memos for displaying hands
     const myHand = useMemo(() => {
+        if (!gameState) return [];
+        if (gameState.gameMode === 'practice') return gameState.playerHand;
         return gameState?.players.find(p => p.id === myPlayerId)?.hand || [];
     }, [gameState, myPlayerId]);
 
     const opponent = useMemo(() => {
         if(!gameState) return null;
+        if (gameState.gameMode === 'practice') {
+             let hand = gameState.aiHand;
+             if(aiPlayedCard) {
+                hand = hand.filter(c => c.id !== aiPlayedCard.id);
+            }
+            return {
+                id: 'ai',
+                name: 'AI Player',
+                hand,
+                isAi: true
+            }
+        }
+
         const opponentPlayer = gameState.players.find(p => p.id !== myPlayerId);
         if (!opponentPlayer) return null;
         
-        const isAi = opponentPlayer.id === 'ai';
-        const name = isAi ? "AI Player" : "Opponent"; // Replace with real name later
-        let hand = opponentPlayer.hand;
-
-        if(isAi && aiPlayedCard) {
-            hand = hand.filter(c => c.id !== aiPlayedCard.id);
-        }
-
         return {
             ...opponentPlayer,
-            name,
-            hand,
-            isAi
+            name: "Opponent", // Replace with real name later
+            isAi: false
         }
 
     }, [gameState, myPlayerId, aiPlayedCard])
@@ -285,9 +296,9 @@ export default function GameBoard({ gameId }: { gameId: string }) {
 
     if (error || !gameState || !opponent) {
         return (
-            <div className="min-h-screen w-full flex flex-col items-center justify-center p-4">
-                <p className="text-destructive-foreground bg-destructive p-4 rounded-md">{error || 'Could not load game state.'}</p>
-                 <Button onClick={() => router.push('/dashboard')} className="mt-4">Back to Dashboard</Button>
+            <div className="min-h-screen w-full flex flex-col items-center justify-center p-4 bg-gray-900/50">
+                <p className="text-white bg-red-500/80 p-4 rounded-md mb-4">{error || 'Could not load game state.'}</p>
+                 <Button onClick={() => router.push('/dashboard')} className="mt-4 bg-green-500 hover:bg-green-600 text-white">Back to Dashboard</Button>
             </div>
         )
     }

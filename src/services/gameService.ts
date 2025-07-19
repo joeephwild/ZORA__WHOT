@@ -221,9 +221,11 @@ export function playCard(gameId: string, playerId: string, card: Card, requested
         switchPlayer(game);
     }
     
-    // For practice mode backward compatibility
-    game.playerHand = game.players.find(p => p.id === 'player1')?.hand || [];
-    game.aiHand = game.players.find(p => p.id === 'ai')?.hand || [];
+    // For backward compatibility
+    if (game.gameMode === 'practice') {
+        game.playerHand = game.players.find(p => p.id === 'player1')?.hand || [];
+        game.aiHand = game.players.find(p => p.id === 'ai')?.hand || [];
+    }
 
     return game;
 }
@@ -258,8 +260,10 @@ export function drawCard(gameId: string, playerId: string): GameState {
     switchPlayer(game);
     
     // For practice mode backward compatibility
-    game.playerHand = game.players.find(p => p.id === 'player1')?.hand || [];
-    game.aiHand = game.players.find(p => p.id === 'ai')?.hand || [];
+    if (game.gameMode === 'practice') {
+        game.playerHand = game.players.find(p => p.id === 'player1')?.hand || [];
+        game.aiHand = game.players.find(p => p.id === 'ai')?.hand || [];
+    }
 
     return game;
 }
