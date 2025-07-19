@@ -23,6 +23,3 @@ Our proposed solution is a **free-to-play Web3 digital adaptation of the classic
 ### MVP Scope
 * **Core Features:** A functional Whot! game (Player vs. AI and 1v1 Multiplayer), seamless onboarding with an in-app wallet via social/email (using thirdweb), a free-to-play mode with starter cards, and a basic Zora coin staking mode.
 * **Out of Scope for MVP:** The full NFT economy (evolution, capture, marketplace), advanced game modes (tournaments), and social features.
-
-### Next Steps
-* This Project Brief provides the full context for the Web3 Whot! Game. The next step is to use this document to create a detailed **Product Requirements Document (PRD)**.
