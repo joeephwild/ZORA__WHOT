@@ -25,7 +25,8 @@ const FULL_DECK: Card[] = [
     { id: 43, shape: 'star', number: 1 }, { id: 44, shape: 'star', number: 2 }, { id: 45, shape: 'star', number: 3 }, { id: 46, shape: 'star', number: 4 }, { id: 47, shape: 'star', number: 5 }, { id: 48, shape: 'star', number: 7 }, { id: 49, shape: 'star', number: 8 },
     // Whot cards
     { id: 50, shape: 'whot', number: 20 }, { id: 51, shape: 'whot', number: 20 }, { id: 52, shape: 'whot', number: 20 }, { id: 53, shape: 'whot', number: 20 }, { id: 54, shape: 'whot', number: 20 }
-];
+].map(card => ({ ...card, uid: uuidv4() }));
+
 
 export interface GameState {
     gameId: string;
@@ -37,6 +38,7 @@ export interface GameState {
     currentPlayerId: string;
     winner: string | null;
     requestedShape: Shape | null; // For when a Whot card is played
+    lastMoveMessage: string | null; // To communicate what just happened
 }
 
 // In-memory store for active games
@@ -71,7 +73,7 @@ export function createGame(playerId: string, gameMode: 'practice' | 'staked' | '
     let firstCardIndex = -1;
     for(let i=0; i< drawPile.length; i++) {
         const card = drawPile[i];
-        if(![1,2,5,8,14,20].includes(card.number)) {
+        if(![1, 2, 5, 8, 14, 20].includes(card.number)) {
             firstCardIndex = i;
             break;
         }
@@ -95,7 +97,8 @@ export function createGame(playerId: string, gameMode: 'practice' | 'staked' | '
         discardPile,
         currentPlayerId: playerId, // Player starts
         winner: null,
-        requestedShape: null
+        requestedShape: null,
+        lastMoveMessage: "Game started. Your turn!"
     };
 
     games[gameId] = gameState;
@@ -106,21 +109,18 @@ export function getGameState(gameId: string): GameState | undefined {
     return games[gameId];
 }
 
-function isValidMove(playedCard: Card, topCard: Card, requestedShape: Shape | null): boolean {
+export function isValidMove(playedCard: Card, topCard: Card, requestedShape: Shape | null): boolean {
     if (playedCard.shape === 'whot') return true;
     if (requestedShape) return playedCard.shape === requestedShape;
     return playedCard.shape === topCard.shape || playedCard.number === topCard.number;
 }
 
-function switchPlayer(gameId: string, currentPlayerId: string) {
-    const game = games[gameId];
+function switchPlayer(game: GameState, currentPlayerId: string) {
     if(!game) return;
-    const { playerHand } = game;
-    // In a real game, we'd have a list of players. Here we just toggle.
-    game.currentPlayerId = currentPlayerId === 'ai' ? playerHand[0]?.id.toString() ?? "player" : 'ai';
+    game.currentPlayerId = currentPlayerId === 'ai' ? 'player1' : 'ai';
 }
 
-export function playCard(gameId: string, playerId: string, card: Card): GameState {
+export function playCard(gameId: string, playerId: string, card: Card, requestedShape?: Shape): GameState {
     const game = games[gameId];
     if (!game || game.winner) throw new Error('Game not found or has already ended.');
     if (game.currentPlayerId !== playerId) throw new Error('Not your turn.');
@@ -132,81 +132,101 @@ export function playCard(gameId: string, playerId: string, card: Card): GameStat
 
     const topCard = game.discardPile[game.discardPile.length - 1];
     if (!isValidMove(card, topCard, game.requestedShape)) {
-        throw new Error('Invalid move.');
+        throw new Error(`Invalid move. You can't play a ${card.shape} ${card.number} on a ${topCard.shape} ${topCard.number}.`);
     }
     
     // Move card from hand to discard pile
     const [playedCard] = hand.splice(cardIndex, 1);
     game.discardPile.push(playedCard);
-    game.requestedShape = null; // Reset requested shape after a valid move
+    game.requestedShape = null; // Reset requested shape after a valid move is made
+    game.lastMoveMessage = `${playerId} played a ${playedCard.shape} ${playedCard.number}.`;
+
 
     // Check for winner
     if (hand.length === 0) {
         game.winner = playerId;
+        game.lastMoveMessage = `${playerId} has won the game!`;
         return game;
     }
 
     // Handle special card actions
+    let nextPlayerGetsTurn = true;
+
     switch (playedCard.number) {
         case 1: // Hold On
-            // Current player plays again, so we don't switch.
-            return game;
-        case 2: // Pick Two
-            switchPlayer(gameId, playerId);
-             drawCard(gameId, game.currentPlayerId, 2);
+            game.lastMoveMessage += " Player gets another turn.";
+            nextPlayerGetsTurn = false; // Current player plays again
             break;
-        case 5: // Pick Three (not a standard Whot! rule, but can be a variant)
-            // No action in standard rules, but you could implement one here
+        case 2: // Pick Two
+            const opponentId2 = playerId === 'ai' ? 'player1' : 'ai';
+            drawFromPile(game, opponentId2, 2);
+            game.lastMoveMessage += ` ${opponentId2} picks two.`;
+            break;
+        case 5: // Pick Three
+            const opponentId5 = playerId === 'ai' ? 'player1' : 'ai';
+            drawFromPile(game, opponentId5, 3);
+            game.lastMoveMessage += ` ${opponentId5} picks three.`;
             break;
         case 8: // Suspension
-            switchPlayer(gameId, playerId); // Skip next player
+            const opponentId8 = playerId === 'ai' ? 'player1' : 'ai';
+            game.lastMoveMessage += ` ${opponentId8} is suspended.`;
+            // Skip next player, so the current player plays again
+            nextPlayerGetsTurn = false;
             break;
         case 14: // General Market
-             drawCard(gameId, playerId === 'ai' ? game.playerHand[0]?.id.toString() ?? "player" : 'ai', 1);
+            // All other players draw one card.
+            const opponentId14 = playerId === 'ai' ? 'player1' : 'ai';
+            drawFromPile(game, opponentId14, 1);
+            game.lastMoveMessage += " General Market! Other players draw one.";
             break;
         case 20: // Whot!
-            // The frontend should ask the player for a shape.
-            // For the AI, the AI flow will decide this.
-            // For now, we assume the next action will set `requestedShape`.
-            return game; // Player plays again
-        default:
-            switchPlayer(gameId, playerId);
+             if (requestedShape) {
+                game.requestedShape = requestedShape;
+                game.lastMoveMessage += ` Player requests ${requestedShape}.`;
+             } else {
+                // This should not happen if the logic is correct.
+                // The AI provides the shape, the UI prompts the user.
+                throw new Error("A shape must be requested when playing a WHOT card.");
+             }
+            nextPlayerGetsTurn = false; // Player who played Whot! goes again
+            break;
     }
     
+    if (nextPlayerGetsTurn) {
+        switchPlayer(game, playerId);
+    }
+
     return game;
 }
 
-export function drawCard(gameId: string, playerId: string, count = 1): GameState {
-    const game = games[gameId];
-    if (!game) throw new Error('Game not found.');
-    
-    const hand = playerId === 'ai' ? game.aiHand : game.playerHand;
+function drawFromPile(game: GameState, playerId: string, count: number) {
+     const hand = playerId === 'ai' ? game.aiHand : game.playerHand;
 
     for (let i = 0; i < count; i++) {
         if (game.drawPile.length === 0) {
             // Reshuffle discard pile into draw pile
             if (game.discardPile.length <= 1) break; // Not enough cards to reshuffle
             const topCard = game.discardPile.pop()!;
-            game.drawPile = shuffleDeck(game.discardPile);
+            game.drawPile = shuffleDeck(game.discardPile.slice(0, -1));
             game.discardPile = [topCard];
         }
-        const [drawnCard] = game.drawPile.splice(0, 1);
-        hand.push(drawnCard);
+        if (game.drawPile.length > 0) {
+            const [drawnCard] = game.drawPile.splice(0, 1);
+            hand.push(drawnCard);
+        }
     }
-
-    switchPlayer(gameId, playerId);
-    return game;
 }
 
-export function setRequestedShape(gameId: string, playerId: string, shape: Shape): GameState {
+
+export function drawCard(gameId: string, playerId: string): GameState {
     const game = games[gameId];
     if (!game) throw new Error('Game not found.');
-    const lastPlayedCard = game.discardPile[game.discardPile.length - 1];
-    if (lastPlayedCard.shape !== 'whot') {
-        throw new Error('Cannot request shape unless a Whot card was played.');
-    }
-    game.requestedShape = shape;
-    // After requesting a shape, the turn passes to the next player.
-    switchPlayer(gameId, playerId);
+    if (game.currentPlayerId !== playerId) throw new Error('Not your turn to draw.');
+    
+    drawFromPile(game, playerId, 1);
+    game.lastMoveMessage = `${playerId} drew a card.`;
+    
+    // After drawing, the turn passes to the next player.
+    switchPlayer(game, playerId);
     return game;
 }
