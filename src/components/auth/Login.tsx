@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { GoogleIcon } from '@/components/icons/GoogleIcon';
 import { AppleIcon } from '@/components/icons/AppleIcon';
-import { Mail } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Login() {
   const router = useRouter();
@@ -37,9 +37,15 @@ export default function Login() {
             <Input id="password" type="password" required />
           </div>
           <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold">
-            Sign In / Sign Up
+            Sign In
           </Button>
         </form>
+        <div className="text-sm text-center mt-4">
+            Don't have an account?{' '}
+            <Link href="/signup" className="underline text-primary">
+                Sign Up
+            </Link>
+        </div>
         <div className="relative my-6">
           <Separator />
           <div className="absolute inset-0 flex items-center">
