@@ -48,7 +48,7 @@ const TurnIndicator = ({ message }: { message: string }) => (
 );
 
 
-export default function GameBoard({ gameMode }: { gameMode: string }) {
+export default function GameBoard({ gameId }: { gameId: string }) {
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -58,7 +58,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [turnMessage, setTurnMessage] = useState<string | null>(null);
     const [lastPlayerId, setLastPlayerId] = useState<string | null>(null);
-    const [invalidMoveCardId, setInvalidMoveCardId] = useState<number | null>(null);
+    const [invalidMoveCardId, setInvalidMoveCardId] = useState<string | null>(null);
     const [playedCard, setPlayedCard] = useState<Card | null>(null);
     const [aiPlayedCard, setAiPlayedCard] = useState<Card | null>(null);
     const [audioEvent, setAudioEvent] = useState<AudioEvent>(null);
@@ -66,60 +66,69 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
     const { toast } = useToast();
     const router = useRouter();
     
+    // In practice mode, player is always 'player1'
+    const myPlayerId = gameState?.gameMode === 'practice' ? 'player1' : 'player1'; // Placeholder for real auth
+    const playerTurn = gameState?.currentPlayerId === myPlayerId;
     const topOfDiscardPile = gameState ? gameState.discardPile[gameState.discardPile.length - 1] : null;
-    const playerTurn = gameState?.currentPlayerId === 'player1';
 
-    // Effect for starting a new game
+    // Effect for starting or fetching a game
     useEffect(() => {
-        const startNewGame = async () => {
+        const initializeGame = async () => {
             setLoading(true);
             setError(null);
-            setAudioEvent('shuffle');
+            
             try {
-                const res = await fetch('/api/game', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'newGame',
-                        payload: { playerId: 'player1', gameMode }
-                    })
-                });
-                if (!res.ok) throw new Error('Failed to start game');
-                const newGame: GameState = await res.json();
-                setGameState(newGame);
-                setLastPlayerId(newGame.currentPlayerId);
+                let gameData: GameState;
+                if (gameId === 'practice') {
+                    setAudioEvent('shuffle');
+                    const res = await fetch('/api/game', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'newGame',
+                            payload: { gameMode: 'practice' }
+                        })
+                    });
+                    if (!res.ok) throw new Error('Failed to start practice game');
+                    gameData = await res.json();
+                } else {
+                     const res = await fetch(`/api/game?gameId=${gameId}`);
+                     if (!res.ok) throw new Error('Game not found');
+                     gameData = await res.json();
+                }
+                setGameState(gameData);
+                setLastPlayerId(gameData.currentPlayerId);
             } catch (err: any) {
                 setError(err.message);
                 toast({
                     title: "Error",
-                    description: "Could not start a new game. Please try again.",
+                    description: err.message || "Could not start or load the game. Please try again.",
                     variant: "destructive"
                 });
             } finally {
                 setLoading(false);
             }
         };
-        startNewGame();
-    }, [gameMode, toast]);
+        initializeGame();
+    }, [gameId, toast]);
 
     // Effect for showing turn change message
     useEffect(() => {
         if (gameState && gameState.currentPlayerId !== lastPlayerId && !gameState.winner) {
-            const message = gameState.currentPlayerId === 'player1' ? "Your Turn!" : "AI's Turn";
+            const message = gameState.currentPlayerId === myPlayerId ? "Your Turn!" : "Opponent's Turn";
             setTurnMessage(message);
             const timer = setTimeout(() => setTurnMessage(null), 1500);
             setLastPlayerId(gameState.currentPlayerId);
             return () => clearTimeout(timer);
         }
          if (gameState?.winner) {
-            setAudioEvent(gameState.winner === 'player1' ? 'win' : 'lose');
+            setAudioEvent(gameState.winner === myPlayerId ? 'win' : 'lose');
         }
-    }, [gameState, lastPlayerId]);
+    }, [gameState, lastPlayerId, myPlayerId]);
 
-    // Effect to trigger AI turn
+    // Effect to trigger AI turn (only in practice mode)
     const handleAiTurn = useCallback(async (gameId: string) => {
         setIsSubmitting(true);
-        // Find the card the AI will play to animate it
         const originalState = gameState;
 
         try {
@@ -160,7 +169,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
     }, [gameState, toast]);
 
     useEffect(() => {
-        if (gameState?.currentPlayerId === 'ai' && !isSubmitting && !gameState.winner) {
+        if (gameState?.gameMode === 'practice' && gameState?.currentPlayerId === 'ai' && !isSubmitting && !gameState.winner) {
             handleAiTurn(gameState.gameId);
         }
     }, [gameState, isSubmitting, handleAiTurn]);
@@ -189,7 +198,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
 
             if (!res.ok) {
                 const errorData = await res.json();
-                throw new Error(errorData.error || 'An unexpected error occurred.');
+                throw new Error(errorData.message || 'An unexpected error occurred.');
             }
 
             const updatedState: GameState = await res.json();
@@ -215,7 +224,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
             setCardToPlay(card);
             setIsChoosingShape(true);
         } else {
-            await submitPlayerMove('playCard', { gameId: gameState!.gameId, playerId: 'player1', card });
+            await submitPlayerMove('playCard', { gameId: gameState!.gameId, playerId: myPlayerId, card });
         }
     };
 
@@ -224,7 +233,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
         setIsChoosingShape(false);
         await submitPlayerMove('playCard', { 
             gameId: gameState!.gameId, 
-            playerId: 'player1', 
+            playerId: myPlayerId, 
             card: cardToPlay,
             requestedShape: shape 
         });
@@ -233,16 +242,35 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
     
     const handleDrawCard = async () => {
         if (!playerTurn || isSubmitting) return;
-        await submitPlayerMove('drawCard', { gameId: gameState!.gameId, playerId: 'player1' });
+        await submitPlayerMove('drawCard', { gameId: gameState!.gameId, playerId: myPlayerId });
     };
     
-    const aiHandToDisplay = useMemo(() => {
-        if(!gameState) return [];
-        if(aiPlayedCard) {
-            return gameState.aiHand.filter(c => c.id !== aiPlayedCard.id);
+    // Memos for displaying hands
+    const myHand = useMemo(() => {
+        return gameState?.players.find(p => p.id === myPlayerId)?.hand || [];
+    }, [gameState, myPlayerId]);
+
+    const opponent = useMemo(() => {
+        if(!gameState) return null;
+        const opponentPlayer = gameState.players.find(p => p.id !== myPlayerId);
+        if (!opponentPlayer) return null;
+        
+        const isAi = opponentPlayer.id === 'ai';
+        const name = isAi ? "AI Player" : "Opponent"; // Replace with real name later
+        let hand = opponentPlayer.hand;
+
+        if(isAi && aiPlayedCard) {
+            hand = hand.filter(c => c.id !== aiPlayedCard.id);
         }
-        return gameState.aiHand;
-    }, [gameState, aiPlayedCard])
+
+        return {
+            ...opponentPlayer,
+            name,
+            hand,
+            isAi
+        }
+
+    }, [gameState, myPlayerId, aiPlayedCard])
 
 
     if (loading) {
@@ -255,7 +283,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
         )
     }
 
-    if (error || !gameState) {
+    if (error || !gameState || !opponent) {
         return (
             <div className="min-h-screen w-full flex flex-col items-center justify-center p-4">
                 <p className="text-destructive-foreground bg-destructive p-4 rounded-md">{error || 'Could not load game state.'}</p>
@@ -272,13 +300,13 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
         <AlertDialogContent>
             <AlertDialogHeader>
             <AlertDialogTitle className="text-center text-3xl font-headline">
-                {gameState.winner === 'player1' ? 'Congratulations!' : 'Game Over'}
+                {gameState.winner === myPlayerId ? 'Congratulations!' : 'Game Over'}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-center text-lg">
                 <div className="flex justify-center items-center my-4">
-                    <Crown className={`w-16 h-16 ${gameState.winner === 'player1' ? 'text-yellow-400' : 'text-muted-foreground'}`} />
+                    <Crown className={`w-16 h-16 ${gameState.winner === myPlayerId ? 'text-yellow-400' : 'text-muted-foreground'}`} />
                 </div>
-                {gameState.winner === 'player1' ? 'You have won the game!' : 'The AI opponent has won. Better luck next time!'}
+                {gameState.winner === myPlayerId ? 'You have won the game!' : 'Your opponent has won. Better luck next time!'}
             </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -338,15 +366,15 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
                         <AvatarFallback><Bot /></AvatarFallback>
                     </Avatar>
                     <div>
-                        <h3 className="font-bold">AI Player ({gameState.aiHand.length} cards)</h3>
+                        <h3 className="font-bold">{opponent.name} ({opponent.hand.length} cards)</h3>
                         <p className="text-xs text-muted-foreground">
-                            {gameState.currentPlayerId === 'ai' ? 'Thinking...' : 'Waiting...'}
+                            {gameState.currentPlayerId === opponent.id ? 'Thinking...' : 'Waiting...'}
                         </p>
                     </div>
                 </div>
                 <div className="flex justify-center items-end h-48">
                     <AnimatePresence>
-                    {aiHandToDisplay.map((card, index) => (
+                    {opponent.hand.map((card, index) => (
                         <motion.div 
                             key={card.id} 
                             layoutId={`card-${card.id}`}
@@ -364,7 +392,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
                 <div className="flex flex-col items-center gap-2">
                     <div className="w-28 sm:w-36 transform transition-transform duration-300 hover:scale-105 hover:shadow-lg">
                          <button onClick={handleDrawCard} disabled={!playerTurn || isSubmitting} className="w-full disabled:cursor-not-allowed">
-                            <WhotCard card={{id: 99, shape: 'whot', number: 20}} isFaceDown />
+                            <WhotCard card={{id: 'draw-pile-card', shape: 'whot', number: 20}} isFaceDown />
                          </button>
                     </div>
                      <Button variant="outline" size="sm" onClick={handleDrawCard} disabled={!playerTurn || isSubmitting}>Draw Card</Button>
@@ -416,7 +444,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
             <div className="w-full flex flex-col items-center">
                 <div className="flex justify-center items-start h-48">
                     <AnimatePresence>
-                    {gameState.playerHand.map((card) => (
+                    {myHand.map((card) => (
                         <motion.button
                             layoutId={`card-${card.id}`}
                             key={card.id} 
@@ -437,7 +465,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
                         <AvatarFallback>U</AvatarFallback>
                     </Avatar>
                     <div>
-                        <h3 className="font-bold">You ({gameState.playerHand.length} cards)</h3>
+                        <h3 className="font-bold">You ({myHand.length} cards)</h3>
                         <p className="text-xs text-muted-foreground">
                              {playerTurn ? 'Your turn' : 'Waiting...'}
                         </p>

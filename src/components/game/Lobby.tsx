@@ -41,7 +41,7 @@ export default function Lobby() {
   }, [fetchRooms]);
 
 
-  const pollRoomStatus = useCallback((roomId: string, isHost: boolean) => {
+  const pollRoomStatus = useCallback((roomId: string) => {
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/lobby?roomId=${roomId}`);
@@ -57,29 +57,34 @@ export default function Lobby() {
         
         const { room } = await res.json();
 
+        // When game starts (on guest join), navigate to the game board
         if (room.status === 'in-progress' && room.gameId) {
           clearInterval(interval);
           toast({ title: 'Match Found!', description: 'Joining your game...' });
           router.push(`/play/${room.gameId}`);
-        } else if (isHost && room.guestId) {
-             // Host can see guest has joined and can start game logic
-             // For now, the game starts automatically when guest joins.
         }
       } catch (error: any) {
         clearInterval(interval);
         toast({ title: 'Error', description: 'Lost connection to the lobby.', variant: 'destructive' });
         setIsProcessing(false);
+        fetchRooms();
       }
     }, 2000); // Poll every 2 seconds
 
     // Stop polling after some time to prevent infinite loops
-     setTimeout(() => {
+     const timeout = setTimeout(() => {
         clearInterval(interval);
         if(isProcessing){
             setIsProcessing(false);
-            toast({ title: 'Timeout', description: 'Could not find a match in time.', variant: 'destructive'});
+            toast({ title: 'Timeout', description: 'Could not find an opponent in time.', variant: 'destructive'});
+            fetchRooms();
         }
      }, 60000); // 1 minute timeout
+    
+     return () => {
+        clearInterval(interval);
+        clearTimeout(timeout);
+     }
 
   }, [router, toast, isProcessing, fetchRooms]);
 
@@ -99,7 +104,7 @@ export default function Lobby() {
       const newRoom = await res.json();
       toast({ title: 'Room Created!', description: 'Waiting for an opponent to join.'});
       fetchRooms(); // Refresh list
-      pollRoomStatus(newRoom.roomId, true); // Start polling as the host
+      pollRoomStatus(newRoom.roomId); // Start polling as the host
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -127,9 +132,9 @@ export default function Lobby() {
             throw new Error(err.message || 'Failed to join room');
         }
 
-        const { room } = await res.json();
+        const { room, gameId } = await res.json();
         toast({ title: 'Joined Room!', description: 'Starting the game...'});
-        router.push(`/play/${room.gameId}`);
+        router.push(`/play/${gameId}`);
 
     } catch(error: any) {
          toast({

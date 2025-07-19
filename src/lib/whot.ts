@@ -1,34 +1,38 @@
 export type Shape = 'circle' | 'triangle' | 'cross' | 'square' | 'star' | 'whot';
 
 export interface Card {
-    id: number;
+    id: string; // Changed to string to support UUIDs
     shape: Shape;
     number: number;
 }
 
 // A full deck of Whot! cards
-export const FULL_DECK: Card[] = [
+export const FULL_DECK_TEMPLATE: Omit<Card, 'id'>[] = [
     // Circles
-    { id: 1, shape: 'circle', number: 1 }, { id: 2, shape: 'circle', number: 2 }, { id: 3, shape: 'circle', number: 3 }, { id: 4, shape: 'circle', number: 4 }, { id: 5, shape: 'circle', number: 5 }, { id: 6, shape: 'circle', number: 7 }, { id: 7, shape: 'circle', number: 8 }, { id: 8, shape: 'circle', number: 10 }, { id: 9, shape: 'circle', number: 11 }, { id: 10, shape: 'circle', number: 12 }, { id: 11, shape: 'circle', number: 13 }, { id: 12, shape: 'circle', number: 14 },
+    { shape: 'circle', number: 1 }, { shape: 'circle', number: 2 }, { shape: 'circle', number: 3 }, { shape: 'circle', number: 4 }, { shape: 'circle', number: 5 }, { shape: 'circle', number: 7 }, { shape: 'circle', number: 8 }, { shape: 'circle', number: 10 }, { shape: 'circle', number: 11 }, { shape: 'circle', number: 12 }, { shape: 'circle', number: 13 }, { shape: 'circle', number: 14 },
     // Triangles
-    { id: 13, shape: 'triangle', number: 1 }, { id: 14, shape: 'triangle', number: 2 }, { id: 15, shape: 'triangle', number: 3 }, { id: 16, shape: 'triangle', number: 4 }, { id: 17, shape: 'triangle', number: 5 }, { id: 18, shape: 'triangle', number: 7 }, { id: 19, shape: 'triangle', number: 8 }, { id: 20, shape: 'triangle', number: 10 }, { id: 21, shape: 'triangle', number: 11 }, { id: 22, shape: 'triangle', number: 12 }, { id: 23, shape: 'triangle', number: 13 }, { id: 24, shape: 'triangle', number: 14 },
+    { shape: 'triangle', number: 1 }, { shape: 'triangle', number: 2 }, { shape: 'triangle', number: 3 }, { shape: 'triangle', number: 4 }, { shape: 'triangle', number: 5 }, { shape: 'triangle', number: 7 }, { shape: 'triangle', number: 8 }, { shape: 'triangle', number: 10 }, { shape: 'triangle', number: 11 }, { shape: 'triangle', number: 12 }, { shape: 'triangle', number: 13 }, { shape: 'triangle', number: 14 },
     // Crosses
-    { id: 25, shape: 'cross', number: 1 }, { id: 26, shape: 'cross', number: 2 }, { id: 27, shape: 'cross', number: 3 }, { id: 28, shape: 'cross', number: 5 }, { id: 29, shape: 'cross', number: 7 }, { id: 30, shape: 'cross', number: 10 }, { id: 31, shape: 'cross', number: 11 }, { id: 32, shape: 'cross', number: 13 }, { id: 33, shape: 'cross', number: 14 },
+    { shape: 'cross', number: 1 }, { shape: 'cross', number: 2 }, { shape: 'cross', number: 3 }, { shape: 'cross', number: 5 }, { shape: 'cross', number: 7 }, { shape: 'cross', number: 10 }, { shape: 'cross', number: 11 }, { shape: 'cross', number: 13 }, { shape: 'cross', number: 14 },
     // Squares
-    { id: 34, shape: 'square', number: 1 }, { id: 35, shape: 'square', number: 2 }, { id: 36, shape: 'square', number: 3 }, { id: 37, shape: 'square', number: 5 }, { id: 38, shape: 'square', number: 7 }, { id: 39, shape: 'square', number: 10 }, { id: 40, shape: 'square', number: 11 }, { id: 41, shape: 'square', number: 13 }, { id: 42, shape: 'square', number: 14 },
+    { shape: 'square', number: 1 }, { shape: 'square', number: 2 }, { shape: 'square', number: 3 }, { shape: 'square', number: 5 }, { shape: 'square', number: 7 }, { shape: 'square', number: 10 }, { shape: 'square', number: 11 }, { shape: 'square', number: 13 }, { shape: 'square', number: 14 },
     // Stars
-    { id: 43, shape: 'star', number: 1 }, { id: 44, shape: 'star', number: 2 }, { id: 45, shape: 'star', number: 3 }, { id: 46, shape: 'star', number: 4 }, { id: 47, shape: 'star', number: 5 }, { id: 48, shape: 'star', number: 7 }, { id: 49, shape: 'star', number: 8 },
+    { shape: 'star', number: 1 }, { shape: 'star', number: 2 }, { shape: 'star', number: 3 }, { shape: 'star', number: 4 }, { shape: 'star', number: 5 }, { shape: 'star', number: 7 }, { shape: 'star', number: 8 },
     // Whot cards
-    { id: 50, shape: 'whot', number: 20 }, { id: 51, shape: 'whot', number: 20 }, { id: 52, shape: 'whot', number: 20 }, { id: 53, shape: 'whot', number: 20 }, { id: 54, shape: 'whot', number: 20 }
+    { shape: 'whot', number: 20 }, { shape: 'whot', number: 20 }, { shape: 'whot', number: 20 }, { shape: 'whot', number: 20 }, { shape: 'whot', number: 20 }
 ];
 
+// Re-export FULL_DECK as Card[] for backward compatibility in some files
+export const FULL_DECK: Card[] = FULL_DECK_TEMPLATE.map((c, i) => ({ ...c, id: (i + 1).toString() }));
+
+
 export const STARTER_PACK: Card[] = [
-    { id: 1, shape: 'circle', number: 5 },
-    { id: 2, shape: 'triangle', number: 8 },
-    { id: 3, shape: 'cross', number: 2 },
-    { id: 4, shape: 'square', number: 10 },
-    { id: 5, shape: 'star', number: 1 },
-    { id: 6, shape: 'star', number: 4 },
-    { id: 50, shape: 'whot', number: 20 },
-    { id: 8, shape: 'triangle', number: 11 },
+    { id: 'starter-1', shape: 'circle', number: 5 },
+    { id: 'starter-2', shape: 'triangle', number: 8 },
+    { id: 'starter-3', shape: 'cross', number: 2 },
+    { id: 'starter-4', shape: 'square', number: 10 },
+    { id: 'starter-5', shape: 'star', number: 1 },
+    { id: 'starter-6', shape: 'star', number: 4 },
+    { id: 'starter-7', shape: 'whot', number: 20 },
+    { id: 'starter-8', shape: 'triangle', number: 11 },
 ];

@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [showInstructions, setShowInstructions] = useState(false);
 
   const startPracticeGame = () => {
+    // The game board will see 'practice' and know to create a new game
     router.push(`/play/practice`);
   };
 

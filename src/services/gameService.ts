@@ -41,7 +41,7 @@ const games: Record<string, GameState> = {};
 
 function shuffleDeck(deck: Card[]): Card[] {
     // Create a new array with unique IDs for each card instance to handle decks with duplicate cards
-    const deckWithUniqueIds = deck.map((card, index) => ({ ...card, id: uuidv4() as any }));
+    const deckWithUniqueIds = deck.map((card, index) => ({ ...card, id: uuidv4() }));
     const shuffled = [...deckWithUniqueIds];
     for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -87,7 +87,10 @@ export function createGame(playerIds: string[], gameMode: GameState['gameMode'])
         drawPile.splice(firstCardIndex, 1);
     } else {
         const reshuffledDrawPile = shuffleDeck(drawPile);
-        discardPile.push(reshuffledDrawPile.pop()!);
+        const firstCard = reshuffledDrawPile.pop()
+        if (firstCard) {
+            discardPile.push(firstCard);
+        }
         drawPile = reshuffledDrawPile;
     }
 
@@ -104,6 +107,7 @@ export function createGame(playerIds: string[], gameMode: GameState['gameMode'])
         currentPlayerIndex: 0,
         currentPlayerId: playerIds[0],
         winner: null,
+        requestedShape: null,
         lastMoveMessage: `Game started. It's ${playerIds[0]}'s turn!`
     };
 
@@ -118,7 +122,7 @@ export function startGameFromRoom(room: GameRoom): GameState {
     }
     const playerIds = [room.hostId, room.guestId];
     // Create a multiplayer game.
-    const game = createGame(playerIds, 'multiplayer');
+    const game = createGame(playerIds, room.gameMode);
     
     // Update room state
     room.gameId = game.gameId;
@@ -128,11 +132,6 @@ export function startGameFromRoom(room: GameRoom): GameState {
 }
 
 export function getGameState(gameId: string): GameState | undefined {
-    // If it's a practice game, find it by player ID if needed
-    if (!games[gameId]) {
-       const practiceGame = Object.values(games).find(g => g.gameId === gameId && g.gameMode === 'practice');
-       return practiceGame;
-    }
     return games[gameId];
 }
 
@@ -163,7 +162,7 @@ export function playCard(gameId: string, playerId: string, card: Card, requested
 
     const topCard = game.discardPile[game.discardPile.length - 1];
     if (!isValidMove(card, topCard, game.requestedShape)) {
-        throw new Error(`Invalid move. You can't play a ${card.shape} ${card.number} on a ${topCard.shape} ${topCard.number}.`);
+        throw new Error(`Invalid move. You can't play a ${card.shape} ${card.number} on a ${game.requestedShape ? `requested shape ${game.requestedShape}` : `${topCard.shape} ${topCard.number}`}.`);
     }
     
     const [playedCard] = hand.splice(cardIndex, 1);
