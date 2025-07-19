@@ -57,7 +57,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
     const [lastPlayerId, setLastPlayerId] = useState<string | null>(null);
     const [invalidMoveCardId, setInvalidMoveCardId] = useState<number | null>(null);
     const [playedCard, setPlayedCard] = useState<Card | null>(null);
-    const [audioEvent, setAudioEvent] = useState<'play' | 'draw' | 'shuffle' | null>(null);
+    const [audioEvent, setAudioEvent] = useState<'play' | 'draw' | 'shuffle' | 'win' | 'lose' | null>(null);
 
     const { toast } = useToast();
     const router = useRouter();
@@ -105,20 +105,24 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
             setLastPlayerId(gameState.currentPlayerId);
             return () => clearTimeout(timer);
         }
+         if (gameState?.winner) {
+            setAudioEvent(gameState.winner === 'player1' ? 'win' : 'lose');
+        }
     }, [gameState, lastPlayerId]);
 
     const submitMove = async (action: 'playCard' | 'drawCard', payload: any) => {
         if (!gameState || gameState.winner || isSubmitting) return;
         
         setIsSubmitting(true);
-        if (action === 'playCard') {
-            setAudioEvent('play');
-            setPlayedCard(payload.card);
-        } else {
-            setAudioEvent('draw');
-        }
         
         try {
+            if (action === 'playCard') {
+                setAudioEvent('play');
+                setPlayedCard(payload.card);
+            } else {
+                setAudioEvent('draw');
+            }
+
             await new Promise(resolve => setTimeout(resolve, 300));
 
             const res = await fetch('/api/game', {
@@ -134,9 +138,12 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
 
             const updatedState: GameState = await res.json();
             
-            // Check if the AI also played
-            if(updatedState.lastMoveMessage?.includes('AI played') || updatedState.lastMoveMessage?.includes('AI draws')) {
+            // Check if the AI also played after our move
+            const lastMove = updatedState.lastMoveMessage || "";
+            if(action === 'playCard' && lastMove.includes('AI played')) {
               setAudioEvent('play');
+            } else if (action === 'drawCard' && lastMove.includes('AI draws')) {
+              setAudioEvent('draw');
             }
 
             setGameState(updatedState);

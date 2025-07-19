@@ -11,12 +11,21 @@ export const useAudio = (url: string, options: UseAudioOptions = {}) => {
   const { volume = 1, loop = false } = options;
   
   // We use a memoized audio element to prevent re-creation on re-renders.
-  // We check for window to ensure it only runs on the client-side.
-  const audio = useMemo(() => typeof window !== 'undefined' ? new Audio(url) : undefined, [url]);
-
+  // This state holds the Audio object, but only on the client-side.
+  const [audio, setAudio] = useState<HTMLAudioElement | undefined>(undefined);
+  
   const [playing, setPlaying] = useState(false);
 
-  const toggle = useCallback(() => setPlaying(p => !p), []);
+  // Effect to create the Audio object only on the client
+  useEffect(() => {
+    const audioObj = new Audio(url);
+    setAudio(audioObj);
+    
+    // Cleanup function to pause and nullify on unmount
+    return () => {
+        audioObj.pause();
+    };
+  }, [url]);
 
   useEffect(() => {
     if (audio) {
@@ -44,17 +53,23 @@ export const useAudio = (url: string, options: UseAudioOptions = {}) => {
 
   const play = useCallback(() => {
     if (audio) {
-        // If it's already playing, we can reset it to play from the start
-        if(playing) {
-            audio.currentTime = 0;
+        if(audio.HAVE_NOTHING) { // A quick check to see if audio is loaded
+           audio.currentTime = 0;
+           audio.play().catch(err => console.error("Audio play failed on retry:", err));
+           setPlaying(true);
         }
-        setPlaying(true);
     }
-  }, [audio, playing]);
+  }, [audio]);
 
   const pause = useCallback(() => {
-    setPlaying(false);
-  }, []);
+    if(audio) {
+      setPlaying(false);
+    }
+  }, [audio]);
+  
+  const toggle = useCallback(() => {
+    setPlaying(p => !p);
+  }, [])
 
   return { playing, toggle, play, pause };
 };
