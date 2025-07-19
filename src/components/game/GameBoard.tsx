@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { GameState, Card, Shape } from '@/lib/whot';
 import { WhotCard } from "./WhotCard";
 import { Avatar, AvatarFallback } from "../ui/avatar";
@@ -60,6 +60,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
     const [lastPlayerId, setLastPlayerId] = useState<string | null>(null);
     const [invalidMoveCardId, setInvalidMoveCardId] = useState<number | null>(null);
     const [playedCard, setPlayedCard] = useState<Card | null>(null);
+    const [aiPlayedCard, setAiPlayedCard] = useState<Card | null>(null);
     const [audioEvent, setAudioEvent] = useState<AudioEvent>(null);
 
     const { toast } = useToast();
@@ -68,6 +69,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
     const topOfDiscardPile = gameState ? gameState.discardPile[gameState.discardPile.length - 1] : null;
     const playerTurn = gameState?.currentPlayerId === 'player1';
 
+    // Effect for starting a new game
     useEffect(() => {
         const startNewGame = async () => {
             setLoading(true);
@@ -100,6 +102,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
         startNewGame();
     }, [gameMode, toast]);
 
+    // Effect for showing turn change message
     useEffect(() => {
         if (gameState && gameState.currentPlayerId !== lastPlayerId && !gameState.winner) {
             const message = gameState.currentPlayerId === 'player1' ? "Your Turn!" : "AI's Turn";
@@ -113,7 +116,57 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
         }
     }, [gameState, lastPlayerId]);
 
-    const submitMove = async (action: 'playCard' | 'drawCard', payload: any) => {
+    // Effect to trigger AI turn
+    const handleAiTurn = useCallback(async (gameId: string) => {
+        setIsSubmitting(true);
+        // Find the card the AI will play to animate it
+        const originalState = gameState;
+
+        try {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Pause for realism
+            const res = await fetch('/api/ai-turn', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ gameId })
+            });
+
+            if (!res.ok) {
+                 const errorData = await res.json();
+                 throw new Error(errorData.error || "AI failed to make a move.");
+            }
+            
+            const updatedState: GameState = await res.json();
+
+            const aiCard = originalState?.aiHand.find(c => !updatedState.aiHand.some(uc => uc.id === c.id));
+            
+            if (aiCard) {
+                setAiPlayedCard(aiCard);
+                setAudioEvent('play');
+                await new Promise(resolve => setTimeout(resolve, 500)); // Animation duration
+            } else {
+                setAudioEvent('draw');
+                 await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            
+            setGameState(updatedState);
+            
+        } catch (err: any) {
+            toast({ title: "AI Error", description: err.message, variant: "destructive" });
+        } finally {
+            setIsSubmitting(false);
+            setAiPlayedCard(null);
+        }
+
+    }, [gameState, toast]);
+
+    useEffect(() => {
+        if (gameState?.currentPlayerId === 'ai' && !isSubmitting && !gameState.winner) {
+            handleAiTurn(gameState.gameId);
+        }
+    }, [gameState, isSubmitting, handleAiTurn]);
+
+
+    const submitPlayerMove = async (action: 'playCard' | 'drawCard', payload: any) => {
         if (!gameState || gameState.winner || isSubmitting) return;
         
         setIsSubmitting(true);
@@ -126,7 +179,7 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
                 setAudioEvent('draw');
             }
 
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise(resolve => setTimeout(resolve, 300)); // Animation time
 
             const res = await fetch('/api/game', {
                 method: 'POST',
@@ -140,14 +193,6 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
             }
 
             const updatedState: GameState = await res.json();
-            
-            const lastMove = updatedState.lastMoveMessage || "";
-            if(action === 'playCard' && (lastMove.includes('AI played') || lastMove.includes("AI's turn"))) {
-              setAudioEvent('play');
-            } else if (action === 'playCard' && lastMove.includes('AI draws')) {
-              setAudioEvent('draw');
-            }
-            
             setGameState(updatedState);
 
         } catch (err: any) {
@@ -170,14 +215,14 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
             setCardToPlay(card);
             setIsChoosingShape(true);
         } else {
-            await submitMove('playCard', { gameId: gameState!.gameId, playerId: 'player1', card });
+            await submitPlayerMove('playCard', { gameId: gameState!.gameId, playerId: 'player1', card });
         }
     };
 
     const handleShapeSelection = async (shape: Shape) => {
         if (!cardToPlay || isSubmitting) return;
         setIsChoosingShape(false);
-        await submitMove('playCard', { 
+        await submitPlayerMove('playCard', { 
             gameId: gameState!.gameId, 
             playerId: 'player1', 
             card: cardToPlay,
@@ -188,16 +233,17 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
     
     const handleDrawCard = async () => {
         if (!playerTurn || isSubmitting) return;
-        await submitMove('drawCard', { gameId: gameState!.gameId, playerId: 'player1' });
+        await submitPlayerMove('drawCard', { gameId: gameState!.gameId, playerId: 'player1' });
     };
-
-    const playerHandToDisplay = useMemo(() => {
-        if (!gameState) return [];
-        if (playedCard && gameState.currentPlayerId === 'player1') {
-            return gameState.playerHand.filter(c => c.id !== playedCard.id);
+    
+    const aiHandToDisplay = useMemo(() => {
+        if(!gameState) return [];
+        if(aiPlayedCard) {
+            return gameState.aiHand.filter(c => c.id !== aiPlayedCard.id);
         }
-        return gameState.playerHand;
-    }, [gameState, playedCard]);
+        return gameState.aiHand;
+    }, [gameState, aiPlayedCard])
+
 
     if (loading) {
         return (
@@ -298,12 +344,18 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
                         </p>
                     </div>
                 </div>
-                <div className="flex justify-center items-end h-32">
-                    {gameState.aiHand.map((_, index) => (
-                        <div key={index} className="w-20 -mx-5">
-                             <WhotCard card={{ id: 999 + index, shape: 'whot', number: 20 }} isFaceDown />
-                        </div>
+                <div className="flex justify-center items-end h-48">
+                    <AnimatePresence>
+                    {aiHandToDisplay.map((card, index) => (
+                        <motion.div 
+                            key={card.id} 
+                            layoutId={`card-${card.id}`}
+                            className="w-24 sm:w-32 -mx-6 sm:-mx-8"
+                        >
+                             <WhotCard card={card} isFaceDown />
+                        </motion.div>
                     ))}
+                    </AnimatePresence>
                 </div>
             </div>
 
@@ -343,6 +395,17 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
                                 <WhotCard card={playedCard} />
                             </motion.div>
                         )}
+                        {aiPlayedCard && (
+                             <motion.div
+                                layoutId={`card-${aiPlayedCard.id}`}
+                                className="absolute inset-0"
+                                initial={{ opacity: 0, scale: 1.5, rotate: -15 }}
+                                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                            >
+                                <WhotCard card={aiPlayedCard} />
+                            </motion.div>
+                        )}
                         </AnimatePresence>
                     </div>
                      <p className="text-xs font-semibold text-muted-foreground">Play Pile</p>
@@ -353,12 +416,12 @@ export default function GameBoard({ gameMode }: { gameMode: string }) {
             <div className="w-full flex flex-col items-center">
                 <div className="flex justify-center items-start h-48">
                     <AnimatePresence>
-                    {playerHandToDisplay.map((card) => (
+                    {gameState.playerHand.map((card) => (
                         <motion.button
                             layoutId={`card-${card.id}`}
                             key={card.id} 
                             onClick={() => handleCardPlay(card)} 
-                            disabled={!playerTurn || isSubmitting} 
+                            disabled={!playerTurn || isSubmitting || !!playedCard} 
                             className="w-24 sm:w-32 -mx-6 sm:-mx-8 disabled:cursor-not-allowed disabled:opacity-70"
                             whileHover={{ y: -16, zIndex: 20, scale: 1.05 }}
                             animate={invalidMoveCardId === card.id ? { x: [0, -10, 10, -10, 10, 0] } : {}}
