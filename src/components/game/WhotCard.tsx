@@ -10,62 +10,11 @@ interface WhotCardProps {
 }
 
 const CenteredShapes = ({ card }: { card: CardType }) => {
-    if (card.number > 10) { // For 11, 12, 13, 14, just show one big icon
-        return (
-            <div className="absolute inset-0 flex items-center justify-center">
-                <ShapeIcon shape={card.shape} className="w-1/2 h-1/2" />
-            </div>
-        )
-    }
-
-    const shapeArray = Array.from({ length: card.number });
-
-    // Simple grid layout for shapes
-    const gridClass = () => {
-        switch(card.number) {
-            case 1: return 'grid-cols-1 justify-center';
-            case 2:
-            case 3: return 'grid-cols-1 justify-center gap-y-4';
-            case 4: return 'grid-cols-2 justify-center';
-            case 5:
-            case 6: return 'grid-cols-2 justify-center';
-            case 7:
-            case 8: return 'grid-cols-3 justify-center items-center';
-            case 9:
-            case 10: return 'grid-cols-3 justify-center items-center';
-            default: return 'grid-cols-3';
-        }
-    }
-    
-    // Some manual adjustments for better layouts
-    const getStyleForIndex = (index: number) => {
-        if (card.number === 5 && index === 4) return { gridColumn: 'span 2' };
-        if (card.number === 7) {
-            if(index === 0) return {gridColumn: 'span 3', marginBottom: '-1rem'}
-            if(index === 6) return {gridColumn: 'span 3', marginTop: '-1rem'}
-        }
-        if (card.number === 8) {
-             if(index === 0 || index === 7) return {gridColumn: 'span 3'}
-        }
-        if (card.number === 9 && (index === 0 || index === 4 || index === 8)) return { alignSelf: 'center'}
-        if (card.number === 10) {
-            if(index === 0 || index === 9) return {gridColumn: 'span 3'}
-        }
-        return {};
-    }
-
     return (
-        <div className={cn("absolute inset-0 flex items-center justify-center p-4", )}>
-            <div className={cn("grid w-full h-full", gridClass())}>
-                 {shapeArray.map((_, i) => (
-                    <div key={i} className="flex items-center justify-center" style={getStyleForIndex(i)}>
-                        <ShapeIcon shape={card.shape} className="w-4 h-4 sm:w-5 sm:h-5" />
-                    </div>
-                 ))}
-            </div>
+        <div className="absolute inset-0 flex items-center justify-center">
+            <ShapeIcon shape={card.shape} className="w-1/2 h-1/2" />
         </div>
     )
-
 }
 
 export function WhotCard({ card, isFaceDown = false, className }: WhotCardProps) {
