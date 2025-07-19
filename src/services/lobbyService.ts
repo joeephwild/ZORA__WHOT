@@ -18,6 +18,7 @@ export interface GameRoom {
     gameMode: 'staked' | 'free';
     createdAt: number;
     status: 'waiting' | 'ready' | 'in-progress';
+    gameId?: string; // Will be set when the game starts
 }
 
 // In-memory store for active game rooms
@@ -49,12 +50,12 @@ export function createRoom(hostId: string, gameMode: 'staked' | 'free'): GameRoo
  * @returns An array of GameRoom objects.
  */
 export function getRooms(): GameRoom[] {
-    // Filter out old rooms that might be stuck, e.g., older than 1 hour
+    // Filter out old rooms that might be stuck, e.g., older than 30 minutes
     const now = Date.now();
-    const oneHour = 60 * 60 * 1000;
+    const thirtyMinutes = 30 * 60 * 1000;
     
     Object.keys(rooms).forEach(roomId => {
-        if (now - rooms[roomId].createdAt > oneHour) {
+        if (now - rooms[roomId].createdAt > thirtyMinutes) {
             delete rooms[roomId];
         }
     });
@@ -81,7 +82,7 @@ export function joinRoom(roomId: string, guestId: string): GameRoom | null {
     const room = rooms[roomId];
     if (room && room.status === 'waiting' && !room.guestId) {
         room.guestId = guestId;
-        room.status = 'ready'; // Both players are now in the room
+        room.status = 'ready'; // Both players are now in the room, ready to start game
         console.log(`Player ${guestId} joined room ${roomId}`);
         return room;
     }

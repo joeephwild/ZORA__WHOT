@@ -11,16 +11,26 @@
 import { v4 as uuidv4 } from 'uuid';
 import { FULL_DECK } from '@/lib/whot';
 import type { Card, Shape } from '@/lib/whot';
+import type { GameRoom } from './lobbyService';
 
 
+export interface PlayerState {
+    id: string;
+    hand: Card[];
+}
 export interface GameState {
     gameId: string;
-    gameMode: 'practice' | 'staked' | 'free';
+    gameMode: 'practice' | 'staked' | 'free' | 'multiplayer';
+    players: PlayerState[];
+    // Backward compatibility for practice mode
     playerHand: Card[];
     aiHand: Card[];
+
     drawPile: Card[];
     discardPile: Card[];
-    currentPlayerId: string;
+    currentPlayerIndex: number;
+    // Backward compatibility for practice mode
+    currentPlayerId: string; 
     winner: string | null;
     requestedShape: Shape | null; // For when a Whot card is played
     lastMoveMessage: string | null; // To communicate what just happened
@@ -31,7 +41,7 @@ const games: Record<string, GameState> = {};
 
 function shuffleDeck(deck: Card[]): Card[] {
     // Create a new array with unique IDs for each card instance to handle decks with duplicate cards
-    const deckWithUniqueIds = deck.map((card, index) => ({ ...card, id: index }));
+    const deckWithUniqueIds = deck.map((card, index) => ({ ...card, id: uuidv4() as any }));
     const shuffled = [...deckWithUniqueIds];
     for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -47,17 +57,22 @@ function dealCards(deck: Card[], numCards: number): [Card[], Card[]] {
     return [hand, remainingDeck];
 }
 
-export function createGame(playerId: string, gameMode: 'practice' | 'staked' | 'free'): GameState {
+export function createGame(playerIds: string[], gameMode: GameState['gameMode']): GameState {
     const gameId = uuidv4();
     let deck = shuffleDeck(FULL_DECK);
 
-    const [playerHand, deckAfterPlayer] = dealCards(deck, 5);
-    const [aiHand, deckAfterAi] = dealCards(deckAfterPlayer, 5);
+    const players: PlayerState[] = [];
+    let currentDeck = deck;
 
-    let discardPile: Card[] = [];
-    let drawPile = deckAfterAi;
+    for (const id of playerIds) {
+        const [hand, remainingDeck] = dealCards(currentDeck, 5);
+        players.push({ id, hand });
+        currentDeck = remainingDeck;
+    }
     
-    // Ensure the first card on the discard pile is not a special card
+    let discardPile: Card[] = [];
+    let drawPile = currentDeck;
+    
     let firstCardIndex = -1;
     for(let i=0; i< drawPile.length; i++) {
         const card = drawPile[i];
@@ -71,7 +86,6 @@ export function createGame(playerId: string, gameMode: 'practice' | 'staked' | '
         discardPile.push(drawPile[firstCardIndex]);
         drawPile.splice(firstCardIndex, 1);
     } else {
-        // Highly unlikely case where all cards are special, just start with any card from a shuffled deck
         const reshuffledDrawPile = shuffleDeck(drawPile);
         discardPile.push(reshuffledDrawPile.pop()!);
         drawPile = reshuffledDrawPile;
@@ -81,21 +95,45 @@ export function createGame(playerId: string, gameMode: 'practice' | 'staked' | '
     const gameState: GameState = {
         gameId,
         gameMode,
-        playerHand,
-        aiHand,
+        players,
+        // For practice mode compatibility
+        playerHand: players.find(p => p.id === 'player1')?.hand || [],
+        aiHand: players.find(p => p.id === 'ai')?.hand || [],
         drawPile,
         discardPile,
-        currentPlayerId: playerId, // Player starts
+        currentPlayerIndex: 0,
+        currentPlayerId: playerIds[0],
         winner: null,
         requestedShape: null,
-        lastMoveMessage: "Game started. Your turn!"
+        lastMoveMessage: `Game started. It's ${playerIds[0]}'s turn!`
     };
 
     games[gameId] = gameState;
     return gameState;
 }
 
+
+export function startGameFromRoom(room: GameRoom): GameState {
+    if (room.status !== 'ready' || !room.guestId) {
+        throw new Error('Room is not ready to start a game.');
+    }
+    const playerIds = [room.hostId, room.guestId];
+    // Create a multiplayer game.
+    const game = createGame(playerIds, 'multiplayer');
+    
+    // Update room state
+    room.gameId = game.gameId;
+    room.status = 'in-progress';
+
+    return game;
+}
+
 export function getGameState(gameId: string): GameState | undefined {
+    // If it's a practice game, find it by player ID if needed
+    if (!games[gameId]) {
+       const practiceGame = Object.values(games).find(g => g.gameId === gameId && g.gameMode === 'practice');
+       return practiceGame;
+    }
     return games[gameId];
 }
 
@@ -107,7 +145,8 @@ export function isValidMove(playedCard: Card, topCard: Card, requestedShape: Sha
 
 function switchPlayer(game: GameState) {
     if(!game) return;
-    game.currentPlayerId = game.currentPlayerId === 'ai' ? 'player1' : 'ai';
+    game.currentPlayerIndex = (game.currentPlayerIndex + 1) % game.players.length;
+    game.currentPlayerId = game.players[game.currentPlayerIndex].id;
 }
 
 export function playCard(gameId: string, playerId: string, card: Card, requestedShape?: Shape): GameState {
@@ -115,7 +154,10 @@ export function playCard(gameId: string, playerId: string, card: Card, requested
     if (!game || game.winner) throw new Error('Game not found or has already ended.');
     if (game.currentPlayerId !== playerId) throw new Error('Not your turn.');
 
-    const hand = playerId === 'ai' ? game.aiHand : game.playerHand;
+    const playerState = game.players.find(p => p.id === playerId);
+    if (!playerState) throw new Error("Player not found in this game.");
+
+    const hand = playerState.hand;
     const cardIndex = hand.findIndex(c => c.id === card.id);
 
     if (cardIndex === -1) throw new Error('Card not in hand.');
@@ -125,48 +167,48 @@ export function playCard(gameId: string, playerId: string, card: Card, requested
         throw new Error(`Invalid move. You can't play a ${card.shape} ${card.number} on a ${topCard.shape} ${topCard.number}.`);
     }
     
-    // Move card from hand to discard pile
     const [playedCard] = hand.splice(cardIndex, 1);
     game.discardPile.push(playedCard);
-    game.requestedShape = null; // Reset requested shape after a valid move is made
+    game.requestedShape = null; 
     game.lastMoveMessage = `${playerId} played a ${playedCard.shape} ${playedCard.number}.`;
 
 
-    // Check for winner
     if (hand.length === 0) {
         game.winner = playerId;
         game.lastMoveMessage = `${playerId} has won the game!`;
         return game;
     }
 
-    // Handle special card actions
     let turnPasses = true;
+    const nextPlayerIndex = (game.currentPlayerIndex + 1) % game.players.length;
+    const nextPlayerId = game.players[nextPlayerIndex].id;
 
     switch (playedCard.number) {
-        case 1: // Hold On - Current player plays again
+        case 1:
             game.lastMoveMessage += " Player gets another turn.";
             turnPasses = false;
             break;
-        case 2: // Pick Two
-            const opponentId2 = playerId === 'ai' ? 'player1' : 'ai';
-            drawFromPile(game, opponentId2, 2);
-            game.lastMoveMessage += ` ${opponentId2} picks two.`;
+        case 2:
+            drawFromPile(game, nextPlayerId, 2);
+            game.lastMoveMessage += ` ${nextPlayerId} picks two.`;
             break;
-        case 5: // Pick Three
-            const opponentId5 = playerId === 'ai' ? 'player1' : 'ai';
-            drawFromPile(game, opponentId5, 3);
-            game.lastMoveMessage += ` ${opponentId5} picks three.`;
+        case 5:
+            drawFromPile(game, nextPlayerId, 3);
+            game.lastMoveMessage += ` ${nextPlayerId} picks three.`;
             break;
-        case 8: // Suspension - Next player misses their turn
-            game.lastMoveMessage += ` Next player is suspended.`;
-            turnPasses = false; // Effectively, current player plays again by skipping the opponent
+        case 8:
+            game.lastMoveMessage += ` ${nextPlayerId} is suspended.`;
+            switchPlayer(game); // Skip the next player
             break;
-        case 14: // General Market - All other players draw one card.
-            const opponentId14 = playerId === 'ai' ? 'player1' : 'ai';
-            drawFromPile(game, opponentId14, 1);
-            game.lastMoveMessage += " General Market! Opponent draws one.";
+        case 14:
+            game.players.forEach(p => {
+                if (p.id !== playerId) {
+                    drawFromPile(game, p.id, 1);
+                }
+            });
+            game.lastMoveMessage += " General Market! All opponents draw one.";
             break;
-        case 20: // Whot! - Player requests a shape and plays again
+        case 20:
              if (requestedShape) {
                 game.requestedShape = requestedShape;
                 game.lastMoveMessage += ` Player requests ${requestedShape} and plays again.`;
@@ -180,24 +222,28 @@ export function playCard(gameId: string, playerId: string, card: Card, requested
     if (turnPasses) {
         switchPlayer(game);
     }
+    
+    // For practice mode backward compatibility
+    game.playerHand = game.players.find(p => p.id === 'player1')?.hand || [];
+    game.aiHand = game.players.find(p => p.id === 'ai')?.hand || [];
 
     return game;
 }
 
 function drawFromPile(game: GameState, playerId: string, count: number) {
-     const hand = playerId === 'ai' ? game.aiHand : game.playerHand;
+    const player = game.players.find(p => p.id === playerId);
+    if (!player) return;
 
     for (let i = 0; i < count; i++) {
         if (game.drawPile.length === 0) {
-            // Reshuffle discard pile into draw pile
-            if (game.discardPile.length <= 1) break; // Not enough cards to reshuffle
+            if (game.discardPile.length <= 1) break;
             const topCard = game.discardPile.pop()!;
             game.drawPile = shuffleDeck(game.discardPile);
             game.discardPile = [topCard];
         }
         if (game.drawPile.length > 0) {
             const [drawnCard] = game.drawPile.splice(0, 1);
-            hand.push(drawnCard);
+            player.hand.push(drawnCard);
         }
     }
 }
@@ -211,7 +257,11 @@ export function drawCard(gameId: string, playerId: string): GameState {
     drawFromPile(game, playerId, 1);
     game.lastMoveMessage = `${playerId} drew a card.`;
     
-    // After drawing, the turn passes to the next player.
     switchPlayer(game);
+    
+    // For practice mode backward compatibility
+    game.playerHand = game.players.find(p => p.id === 'player1')?.hand || [];
+    game.aiHand = game.players.find(p => p.id === 'ai')?.hand || [];
+
     return game;
 }

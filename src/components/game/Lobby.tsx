@@ -12,13 +12,16 @@ import { Badge } from '../ui/badge';
 export default function Lobby() {
   const [rooms, setRooms] = useState<GameRoom[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false); // For creating or joining
   const router = useRouter();
   const { toast } = useToast();
 
   const fetchRooms = useCallback(async () => {
+    // Don't refetch if we're already processing something
+    if (isProcessing) return;
+    setIsLoading(true);
     try {
-      const res = await fetch('/api/lobby?action=getRooms');
+      const res = await fetch('/api/lobby');
       if (!res.ok) throw new Error('Failed to fetch rooms');
       const data = await res.json();
       setRooms(data.rooms);
@@ -31,17 +34,58 @@ export default function Lobby() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, isProcessing]);
 
   useEffect(() => {
     fetchRooms();
-    // In a real app, you'd use WebSockets or polling to get live updates
-    // const interval = setInterval(fetchRooms, 5000); 
-    // return () => clearInterval(interval);
   }, [fetchRooms]);
 
+
+  const pollRoomStatus = useCallback((roomId: string, isHost: boolean) => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/lobby?roomId=${roomId}`);
+        if(res.status === 404) {
+             toast({ title: 'Room Expired', description: 'The room you were in is no longer available.', variant: 'destructive'});
+             clearInterval(interval);
+             setIsProcessing(false);
+             fetchRooms(); // Refresh lobby
+             return;
+        }
+
+        if (!res.ok) throw new Error('Failed to get room status');
+        
+        const { room } = await res.json();
+
+        if (room.status === 'in-progress' && room.gameId) {
+          clearInterval(interval);
+          toast({ title: 'Match Found!', description: 'Joining your game...' });
+          router.push(`/play/${room.gameId}`);
+        } else if (isHost && room.guestId) {
+             // Host can see guest has joined and can start game logic
+             // For now, the game starts automatically when guest joins.
+        }
+      } catch (error: any) {
+        clearInterval(interval);
+        toast({ title: 'Error', description: 'Lost connection to the lobby.', variant: 'destructive' });
+        setIsProcessing(false);
+      }
+    }, 2000); // Poll every 2 seconds
+
+    // Stop polling after some time to prevent infinite loops
+     setTimeout(() => {
+        clearInterval(interval);
+        if(isProcessing){
+            setIsProcessing(false);
+            toast({ title: 'Timeout', description: 'Could not find a match in time.', variant: 'destructive'});
+        }
+     }, 60000); // 1 minute timeout
+
+  }, [router, toast, isProcessing, fetchRooms]);
+
+
   const handleCreateRoom = async (gameMode: 'staked' | 'free') => {
-    setIsCreating(true);
+    setIsProcessing(true);
     try {
       const res = await fetch('/api/lobby', {
         method: 'POST',
@@ -53,27 +97,49 @@ export default function Lobby() {
       });
       if (!res.ok) throw new Error('Failed to create room');
       const newRoom = await res.json();
-      // Navigate to a "waiting" screen for the created room
-      // For now, we'll just refresh the lobby to show the new room
-      toast({ title: 'Success', description: `New ${gameMode} room created!`});
-      fetchRooms();
+      toast({ title: 'Room Created!', description: 'Waiting for an opponent to join.'});
+      fetchRooms(); // Refresh list
+      pollRoomStatus(newRoom.roomId, true); // Start polling as the host
     } catch (error: any) {
       toast({
         title: 'Error',
         description: error.message || 'Could not create game room.',
         variant: 'destructive',
       });
-    } finally {
-      setIsCreating(false);
+       setIsProcessing(false);
     }
   };
 
-  const handleJoinRoom = (roomId: string) => {
-    // Logic to join the room and start the game
-    console.log(`Joining room ${roomId}`);
-    toast({ title: 'Coming Soon!', description: 'Joining multiplayer games is not yet implemented.' });
-    // In a real implementation:
-    // router.push(`/play/${roomId}`);
+  const handleJoinRoom = async (roomId: string) => {
+    setIsProcessing(true);
+    try {
+        const res = await fetch('/api/lobby', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                action: 'joinRoom',
+                payload: { roomId, guestId: 'player2' } // guestId would be dynamic
+            })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.message || 'Failed to join room');
+        }
+
+        const { room } = await res.json();
+        toast({ title: 'Joined Room!', description: 'Starting the game...'});
+        router.push(`/play/${room.gameId}`);
+
+    } catch(error: any) {
+         toast({
+            title: 'Error Joining Room',
+            description: error.message,
+            variant: 'destructive',
+        });
+        setIsProcessing(false);
+        fetchRooms();
+    }
   };
 
   return (
@@ -83,7 +149,7 @@ export default function Lobby() {
       
       <div className="container mx-auto p-4 sm:p-6 lg:p-8 relative z-10">
         <header className="flex items-center justify-between mb-8">
-            <Button variant="outline" onClick={() => router.push('/dashboard')}>
+            <Button variant="outline" onClick={() => router.push('/dashboard')} disabled={isProcessing}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Dashboard
             </Button>
@@ -96,18 +162,26 @@ export default function Lobby() {
             <CardTitle className="flex items-center justify-between">
                 <span>Open Matches</span>
                 <div className="flex items-center gap-2">
-                    <Button onClick={() => handleCreateRoom('free')} disabled={isCreating} size="sm">
-                        <PlusCircle className="mr-2 h-4 w-4" /> Create Free Match
+                    <Button onClick={() => handleCreateRoom('free')} disabled={isProcessing} size="sm">
+                        {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                        Create Free Match
                     </Button>
-                    <Button onClick={() => handleCreateRoom('staked')} disabled={isCreating} size="sm" variant="secondary">
-                        <PlusCircle className="mr-2 h-4 w-4" /> Create Staked Match
+                    <Button onClick={() => handleCreateRoom('staked')} disabled={isProcessing} size="sm" variant="secondary">
+                        {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                        Create Staked Match
                     </Button>
                 </div>
             </CardTitle>
             <CardDescription>Join an existing game or create your own.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+             {isProcessing && !isLoading && (
+                <div className="flex justify-center items-center p-8 flex-col gap-4">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                    <p className="font-semibold text-muted-foreground">Waiting for an opponent...</p>
+                </div>
+             )}
+            <div className={`space-y-4 ${isProcessing ? 'hidden' : ''}`}>
               {isLoading ? (
                 <div className="flex justify-center items-center p-8">
                   <Loader2 className="h-8 w-8 animate-spin" />
@@ -133,7 +207,7 @@ export default function Lobby() {
                         {room.gameMode === 'staked' && (
                              <Badge variant="outline" className="border-accent text-accent font-bold">100 ZORA</Badge>
                         )}
-                        <Button onClick={() => handleJoinRoom(room.roomId)}>Join Game</Button>
+                        <Button onClick={() => handleJoinRoom(room.roomId)} disabled={isProcessing}>Join Game</Button>
                     </div>
                   </div>
                 ))
