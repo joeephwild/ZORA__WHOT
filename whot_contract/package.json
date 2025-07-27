@@ -1,0 +1,27 @@
+{
+  "name": "whot-game-contract",
+  "version": "1.0.0",
+  "description": "Smart contract for WHOT card game on Base blockchain",
+  "scripts": {
+    "build": "npx thirdweb@latest detect",
+    "deploy": "npx thirdweb@latest deploy",
+    "deploy:base": "npx hardhat run scripts/deploy-base.js --network baseSepolia",
+    "deploy:base-mainnet": "npx hardhat run scripts/deploy-base.js --network base",
+    "compile": "npx hardhat compile",
+    "test": "npx hardhat test",
+    "publish": "npx thirdweb@latest publish"
+  },
+  "devDependencies": {
+    "@matterlabs/hardhat-zksync-solc": "^1.1.14",
+    "@matterlabs/hardhat-zksync-verify": "^1.7.1",
+    "hardhat": "^2.19.1",
+    "dotenv": "^16.0.0"
+  },
+  "dependencies": {
+    "@thirdweb-dev/contracts": "^3.8.0",
+    "zksync-ethers": "^5.7.0"
+  },
+  "keywords": ["whot", "game", "blockchain", "base", "erc1155", "smart-contract"],
+  "author": "WHOT Game Team",
+  "license": "Apache-2.0"
+}
